@@ -935,6 +935,7 @@
             let placementGhost = null;
             let selectedCadTool = 'select';
             let viewportLastHit = null;
+            let libraryDragSession = null;
             let cadClipboard = null;
             let viewportContextMenuState = null;
             let draggingProjectTabId = null;
@@ -1644,6 +1645,14 @@
                         setCadTool('insert');
                         renderPieceLibrary();
                     });
+                    button.addEventListener('pointerdown', (event) => {
+                        startLibraryDrag(
+                            event,
+                            button.dataset.shape,
+                            parseInt(button.dataset.width, 10),
+                            parseInt(button.dataset.height, 10)
+                        );
+                    });
                 });
 
                 libraryColorGrid.innerHTML = colorOptions.map(color => `
@@ -2274,6 +2283,57 @@
                 updateCadStatus('Sposta il fantasma sul punto giusto e rilascia per confermare. Esc annulla.', 'Inserisci');
             }
 
+            function startLibraryDrag(event, shapeType, studsX, studsY) {
+                if (event.button !== 0) return;
+                selectedLibraryShape = { shapeType, studsX, studsY };
+                setCadTool('insert');
+                renderPieceLibrary();
+                libraryDragSession = { pointerId: event.pointerId };
+                updateCadStatus('Aggancio magnetico attivo: trascina sul mosaico e rilascia per piazzare.', 'Inserisci');
+                event.preventDefault();
+            }
+
+            function updateLibraryDrag(event) {
+                if (!libraryDragSession) return;
+                const hit = getViewportHit(event);
+                viewportLastHit = hit;
+
+                if (!hit) {
+                    hoveredPieceKey = null;
+                    updatePieceHighlights();
+                    placementSession = null;
+                    clearPlacementGhost();
+                    return;
+                }
+
+                hoveredPieceKey = hit.kind === 'piece' ? hit.pieceKey : null;
+                updatePieceHighlights();
+                placementSession = {
+                    build: hit.build,
+                    row: hit.kind === 'piece' ? hit.piece.row : hit.row,
+                    col: hit.kind === 'piece' ? hit.piece.col : hit.col,
+                    startX: null,
+                    startY: null
+                };
+                updatePlacementGhost(placementSession.build, placementSession.row, placementSession.col);
+            }
+
+            function endLibraryDrag(event) {
+                if (!libraryDragSession) return;
+                const hit = getViewportHit(event) || placementSession;
+                if (hit && selectedCadTool === 'insert') {
+                    const row = hit.kind === 'piece' ? hit.piece.row : hit.row;
+                    const col = hit.kind === 'piece' ? hit.piece.col : hit.col;
+                    commitViewportPlacement(row, col);
+                    updateCadStatus(`Pezzo agganciato in R${row + 1} C${col + 1}.`, 'Inserisci');
+                }
+                libraryDragSession = null;
+                placementSession = null;
+                hoveredPieceKey = null;
+                clearPlacementGhost();
+                updatePieceHighlights();
+            }
+
             function applyViewportAction(hit) {
                 if (!hit) return;
 
@@ -2402,6 +2462,16 @@
 
             document.querySelectorAll('[data-cad-tool]').forEach(button => {
                 button.addEventListener('click', () => setCadTool(button.dataset.cadTool));
+            });
+
+            document.addEventListener('pointermove', (event) => {
+                updateLibraryDrag(event);
+            });
+            document.addEventListener('pointerup', (event) => {
+                endLibraryDrag(event);
+            });
+            document.addEventListener('pointercancel', (event) => {
+                endLibraryDrag(event);
             });
 
             cadCopyBtn.addEventListener('click', () => {
@@ -2701,6 +2771,7 @@
                 }
 
                 if (event.key === 'Escape') {
+                    libraryDragSession = null;
                     placementSession = null;
                     clearPlacementGhost();
                     closeViewportContextMenu();

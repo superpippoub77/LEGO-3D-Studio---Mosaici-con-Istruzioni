@@ -86,12 +86,58 @@
             border-color: #facc15;
             color: #facc15;
         }
+        .cad-tool-btn.active {
+            border-color: #facc15;
+            background: rgba(250, 204, 21, 0.12);
+            color: #facc15;
+        }
         .edit-mode-btn.active,
         .edit-target-btn.active,
         .piece-option.active {
             border-color: #facc15;
             background: rgba(250, 204, 21, 0.12);
             color: #facc15;
+        }
+        .piece-thumb {
+            width: 56px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            display: grid;
+            place-items: center;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 0.75));
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+        .piece-thumb-grid {
+            display: grid;
+            gap: 2px;
+            padding: 3px;
+            width: 92%;
+            height: 78%;
+            border-radius: 6px;
+            background: linear-gradient(180deg, var(--brick-main), var(--brick-dark));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.28);
+        }
+        .piece-thumb-grid .stud {
+            border-radius: 9999px;
+            background: linear-gradient(180deg, var(--brick-light), var(--brick-main));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 1px 0 rgba(0,0,0,0.3);
+        }
+        .piece-thumb-round {
+            width: 22px;
+            height: 22px;
+            border-radius: 9999px;
+            background: radial-gradient(circle at 35% 28%, var(--brick-light), var(--brick-main) 58%, var(--brick-dark));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 2px 5px rgba(0,0,0,0.35);
+            position: relative;
+        }
+        .piece-thumb-round::after {
+            content: '';
+            position: absolute;
+            inset: 6px;
+            border-radius: 9999px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.26), rgba(255,255,255,0.06));
         }
         .step-card {
             background: rgba(15, 23, 42, 0.72);
@@ -153,6 +199,30 @@
 
     <div class="border-b border-slate-800 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950/95 backdrop-blur-sm shrink-0 z-10 shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
         <div class="px-3 md:px-4 pt-2 pb-1 flex items-end gap-2 overflow-x-auto" id="projectTabsBar"></div>
+    </div>
+
+    <div class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-sm shrink-0 z-10">
+        <div class="px-3 md:px-4 py-2 flex items-center justify-between gap-3 overflow-x-auto">
+            <div class="flex items-center gap-1.5 text-[11px] text-slate-300">
+                <button type="button" data-cad-tool="select" class="cad-tool-btn h-9 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-pointer text-yellow-400"></i><span>Seleziona</span>
+                </button>
+                <button type="button" data-cad-tool="insert" class="cad-tool-btn h-9 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-cubes text-slate-200"></i><span>Inserisci</span>
+                </button>
+                <button type="button" data-cad-tool="delete" class="cad-tool-btn h-9 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-trash text-slate-200"></i><span>Elimina</span>
+                </button>
+                <div class="h-6 w-px bg-slate-700 mx-1"></div>
+                <button type="button" id="cadCopyBtn" class="h-9 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 flex items-center gap-2"><i class="fa-solid fa-copy text-slate-200"></i><span>Copia</span></button>
+                <button type="button" id="cadPasteBtn" class="h-9 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 flex items-center gap-2"><i class="fa-solid fa-paste text-slate-200"></i><span>Incolla</span></button>
+                <button type="button" id="cadCutBtn" class="h-9 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 flex items-center gap-2"><i class="fa-solid fa-scissors text-slate-200"></i><span>Taglia</span></button>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-slate-400 whitespace-nowrap">
+                <span class="px-2 py-1 rounded-full border border-slate-700 bg-slate-800/80">LeoCAD-like mode</span>
+                <span>Click: seleziona · Drag: piazza · Delete: rimuovi · Ctrl+C/V/X: clipboard</span>
+            </div>
+        </div>
     </div>
 
     <div class="flex flex-1 overflow-hidden relative">
@@ -481,6 +551,25 @@
                         <div class="flex items-center justify-between gap-2">
                             <div>
                                 <input id="projectNameInput" type="text" value="Progetto 1" class="w-full mt-1 text-sm font-bold text-slate-100 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5">
+
+                        <div id="viewportContextMenu" class="hidden absolute z-30 w-52 rounded-2xl border border-slate-700 bg-slate-900/95 shadow-2xl backdrop-blur-md overflow-hidden pointer-events-auto">
+                            <button type="button" data-cad-action="copy" class="w-full px-3 py-2 text-left text-[11px] text-slate-200 hover:bg-slate-800 flex items-center justify-between">
+                                <span>Copia</span><span class="text-slate-500">Ctrl+C</span>
+                            </button>
+                            <button type="button" data-cad-action="cut" class="w-full px-3 py-2 text-left text-[11px] text-slate-200 hover:bg-slate-800 flex items-center justify-between">
+                                <span>Taglia</span><span class="text-slate-500">Ctrl+X</span>
+                            </button>
+                            <button type="button" data-cad-action="paste" class="w-full px-3 py-2 text-left text-[11px] text-slate-200 hover:bg-slate-800 flex items-center justify-between">
+                                <span>Incolla qui</span><span class="text-slate-500">Ctrl+V</span>
+                            </button>
+                            <button type="button" data-cad-action="select-area" class="w-full px-3 py-2 text-left text-[11px] text-slate-200 hover:bg-slate-800 flex items-center justify-between">
+                                <span>Seleziona area</span><span class="text-slate-500">Alt+click</span>
+                            </button>
+                            <div class="border-t border-slate-800"></div>
+                            <button type="button" data-cad-action="delete" class="w-full px-3 py-2 text-left text-[11px] text-red-300 hover:bg-slate-800 flex items-center justify-between">
+                                <span>Elimina</span><span class="text-slate-500">Delete</span>
+                            </button>
+                        </div>
                             </div>
                             <button id="newProjectBtn" class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 text-[11px] font-bold rounded-lg transition">
                                 +
@@ -737,12 +826,129 @@
             let selectedPieceKey = null;
             let placementSession = null;
             let placementGhost = null;
+            let selectedCadTool = 'select';
+            let viewportLastHit = null;
+            let cadClipboard = null;
+            let viewportContextMenuState = null;
             let draggingProjectTabId = null;
             let activeSaveMode = 'overwrite';
             let pendingServerSave = null;
 
             function makePieceKey(piece) {
                 return `${piece.row}:${piece.col}:${piece.studsX}:${piece.studsY}:${piece.shapeType}:${piece.hex}:${piece.plates}`;
+            }
+
+            function getSelectedBuildPiece() {
+                const build = getBuildForDirectEdit();
+                if (!build || !selectedPieceKey) return null;
+                return build.placedPieces.find(item => (item.pieceKey || makePieceKey(item)) === selectedPieceKey) || null;
+            }
+
+            function setCadClipboardFromPiece(piece) {
+                if (!piece) return;
+                cadClipboard = {
+                    type: 'piece',
+                    shapeType: piece.shapeType,
+                    studsX: piece.studsX,
+                    studsY: piece.studsY,
+                    hex: piece.hex,
+                    plates: piece.plates,
+                    transparent: !!piece.transparent,
+                    label: shapeLabel(piece.shapeType, piece.studsX, piece.studsY)
+                };
+                updateCadStatus(`Copiato: ${cadClipboard.label}. Clicca una cella e premi Incolla o Ctrl+V.`, 'Copia');
+            }
+
+            function setCadClipboardFromArea(area) {
+                if (!area) return;
+                cadClipboard = {
+                    type: 'area',
+                    shapeType: area.shapeType || 'square',
+                    studsX: Math.max(1, area.studsX || area.width || 1),
+                    studsY: Math.max(1, area.studsY || area.height || 1),
+                    hex: area.hex,
+                    plates: Math.max(1, area.plates || 1),
+                    transparent: !!area.transparent,
+                    label: `Area ${Math.max(1, area.studsX || area.width || 1)}x${Math.max(1, area.studsY || area.height || 1)}`
+                };
+                updateCadStatus(`Copiata ${cadClipboard.label}.`, 'Copia');
+            }
+
+            function buildEditFromClipboard(row, col) {
+                if (!cadClipboard) return null;
+                return {
+                    id: `edit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    mode: 'insert',
+                    target: cadClipboard.type === 'area' ? 'area' : 'piece',
+                    row,
+                    col,
+                    width: cadClipboard.studsX,
+                    height: cadClipboard.studsY,
+                    label: cadClipboard.label || '',
+                    shapeType: cadClipboard.shapeType,
+                    studsX: cadClipboard.studsX,
+                    studsY: cadClipboard.studsY,
+                    hex: cadClipboard.hex,
+                    plates: cadClipboard.plates,
+                    transparent: !!cadClipboard.transparent
+                };
+            }
+
+            function pasteClipboardAt(row, col) {
+                const project = getActiveProject();
+                if (!project || !cadClipboard) return false;
+                const edit = buildEditFromClipboard(row, col);
+                if (!edit) return false;
+                project.manualEdits.push(edit);
+                renderEditList();
+                build3dLegoMosaic();
+                updateCadStatus(`Incollato ${cadClipboard.label} in R${row + 1} C${col + 1}.`, 'Incolla');
+                return true;
+            }
+
+            function deleteSelectedPiece() {
+                const piece = getSelectedBuildPiece();
+                if (!piece) return false;
+                deletePieceFromViewport(piece);
+                selectedPieceKey = null;
+                hoveredPieceKey = null;
+                updatePieceHighlights();
+                updateCadStatus('Pezzo eliminato.', 'Elimina');
+                return true;
+            }
+
+            function selectAreaFromHit(hit) {
+                if (!hit) return false;
+                selectedEditTarget = 'area';
+                document.querySelectorAll('[data-edit-target]').forEach(btn => btn.classList.toggle('active', btn.dataset.editTarget === 'area'));
+                const row = hit.kind === 'piece' ? hit.piece.row : hit.row;
+                const col = hit.kind === 'piece' ? hit.piece.col : hit.col;
+                const width = hit.kind === 'piece' ? hit.piece.studsX : Math.max(1, parseInt(editWidthInput.value, 10) || 1);
+                const height = hit.kind === 'piece' ? hit.piece.studsY : Math.max(1, parseInt(editHeightInput.value, 10) || 1);
+                editRowInput.value = String(row + 1);
+                editColInput.value = String(col + 1);
+                editWidthInput.value = String(width);
+                editHeightInput.value = String(height);
+                if (hit.kind === 'piece') {
+                    syncSelectedLibraryPiece(hit.piece);
+                }
+                updateCadStatus(`Area selezionata: R${row + 1} C${col + 1} · ${width}x${height}.`, 'Area');
+                return true;
+            }
+
+            function openViewportContextMenu(x, y, hit) {
+                const menu = document.getElementById('viewportContextMenu');
+                if (!menu) return;
+                viewportContextMenuState = { x, y, hit };
+                menu.classList.remove('hidden');
+                menu.style.left = `${Math.min(x, webglContainer.clientWidth - 220)}px`;
+                menu.style.top = `${Math.min(y, webglContainer.clientHeight - 210)}px`;
+            }
+
+            function closeViewportContextMenu() {
+                viewportContextMenuState = null;
+                const menu = document.getElementById('viewportContextMenu');
+                if (menu) menu.classList.add('hidden');
             }
 
             function syncSelectedLibraryPiece(piece) {
@@ -780,6 +986,18 @@
             function updateCadStatus(message, modeLabel = null) {
                 if (cadStatusText) cadStatusText.textContent = message;
                 if (cadModeBadge && modeLabel) cadModeBadge.textContent = modeLabel;
+            }
+
+            function setCadTool(tool) {
+                selectedCadTool = tool;
+                document.querySelectorAll('[data-cad-tool]').forEach(button => button.classList.toggle('active', button.dataset.cadTool === tool));
+                if (tool === 'select') {
+                    updateCadStatus('Clicca un pezzo per selezionarlo. Ctrl+C/X/V funzionano sul pezzo selezionato.', 'Seleziona');
+                } else if (tool === 'insert') {
+                    updateCadStatus('Scegli un pezzo e clicca sul mosaico per piazzarlo.', 'Inserisci');
+                } else if (tool === 'delete') {
+                    updateCadStatus('Clicca un pezzo per eliminarlo.', 'Elimina');
+                }
             }
 
             function clearPlacementGhost() {
@@ -1259,11 +1477,47 @@
                     selectedLibraryHex = colorOptions[0].hex;
                 }
 
+                const tintHex = (hex, amount) => {
+                    const r = (hex >> 16) & 0xff;
+                    const g = (hex >> 8) & 0xff;
+                    const b = hex & 0xff;
+                    const mix = (channel) => {
+                        const next = amount >= 0
+                            ? channel + (255 - channel) * amount
+                            : channel * (1 + amount);
+                        return Math.max(0, Math.min(255, Math.round(next)));
+                    };
+                    const nr = mix(r);
+                    const ng = mix(g);
+                    const nb = mix(b);
+                    return `#${((nr << 16) | (ng << 8) | nb).toString(16).padStart(6, '0')}`;
+                };
+
+                const activeHex = '#' + selectedLibraryHex.toString(16).padStart(6, '0');
+                const activeHexLight = tintHex(selectedLibraryHex, 0.22);
+                const activeHexDark = tintHex(selectedLibraryHex, -0.28);
+
+                const pieceThumbHtml = (piece) => {
+                    const styleVars = `--brick-main:${activeHex};--brick-light:${activeHexLight};--brick-dark:${activeHexDark};`;
+                    if (piece.shapeType === 'round') {
+                        return `<div class="piece-thumb" style="${styleVars}"><div class="piece-thumb-round"></div></div>`;
+                    }
+
+                    const studs = Array.from({ length: Math.max(1, piece.studsX * piece.studsY) }, () => '<span class="stud"></span>').join('');
+                    return `
+                        <div class="piece-thumb" style="${styleVars}">
+                            <div class="piece-thumb-grid" style="grid-template-columns:repeat(${piece.studsX},minmax(0,1fr));grid-template-rows:repeat(${piece.studsY},minmax(0,1fr));">
+                                ${studs}
+                            </div>
+                        </div>
+                    `;
+                };
+
                 pieceLibraryGrid.innerHTML = PIECE_LIBRARY.map(piece => `
                     <button type="button" data-shape="${piece.shapeType}" data-width="${piece.studsX}" data-height="${piece.studsY}" class="piece-option flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 p-2 text-left ${selectedLibraryShape.shapeType === piece.shapeType && selectedLibraryShape.studsX === piece.studsX && selectedLibraryShape.studsY === piece.studsY ? 'active' : ''}">
-                        <i class="${piece.icon} text-slate-200"></i>
+                        ${pieceThumbHtml(piece)}
                         <div>
-                            <div class="text-xs font-bold text-slate-100">${piece.label}</div>
+                            <div class="text-xs font-bold text-slate-100">${piece.studsX}x${piece.studsY}${piece.shapeType === 'round' ? ' tondo' : ''}</div>
                             <div class="text-[10px] text-slate-400">${piece.hint}</div>
                         </div>
                     </button>
@@ -1781,6 +2035,9 @@
             const saveModalText = document.getElementById('saveModalText');
             const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
             const globalLoadingLabel = document.getElementById('globalLoadingLabel');
+            const cadCopyBtn = document.getElementById('cadCopyBtn');
+            const cadPasteBtn = document.getElementById('cadPasteBtn');
+            const cadCutBtn = document.getElementById('cadCutBtn');
             const layoutGridPickerCanvas = document.getElementById('layoutGridPickerCanvas');
             const layoutGridPickerCtx = layoutGridPickerCanvas.getContext('2d');
             const layoutApplyEditBtn = document.getElementById('layoutApplyEditBtn');
@@ -1838,6 +2095,7 @@
                 renderer.domElement.addEventListener('pointerdown', onViewportPointerDown);
                 renderer.domElement.addEventListener('pointermove', onViewportPointerMove);
                 renderer.domElement.addEventListener('pointerup', onViewportPointerUp);
+                renderer.domElement.addEventListener('contextmenu', onViewportContextMenu);
 
                 window.addEventListener('resize', onWindowResize);
                 animate();
@@ -1907,33 +2165,46 @@
             function applyViewportAction(hit) {
                 if (!hit) return;
 
-                if (hit.kind === 'piece') {
-                    selectedPieceKey = hit.pieceKey;
-                    syncSelectedLibraryPiece(hit.piece);
-                    updatePieceHighlights();
+                if (selectedCadTool === 'select') {
+                    if (hit.kind === 'piece') {
+                        selectedPieceKey = hit.pieceKey;
+                        setSelectedPiece(hit.piece);
+                        updatePieceHighlights();
+                        updateCadStatus(`Selezionato ${shapeLabel(hit.piece.shapeType, hit.piece.studsX, hit.piece.studsY)}.`, 'Seleziona');
+                    } else {
+                        selectedPieceKey = null;
+                        updatePieceHighlights();
+                        updateCadStatus(`Cella R${hit.row + 1} C${hit.col + 1} selezionata.`, 'Seleziona');
+                    }
+                    return;
+                }
 
-                    if (selectedEditMode === 'delete') {
+                if (selectedCadTool === 'delete') {
+                    if (hit.kind === 'piece') {
                         deletePieceFromViewport(hit.piece);
                         selectedPieceKey = null;
                         hoveredPieceKey = null;
                         updatePieceHighlights();
-                        return;
                     }
+                    return;
+                }
 
-                    if (selectedEditMode === 'insert' || selectedEditMode === 'modify') {
-                        startPlacementSession(hit);
-                        return;
-                    }
+                if (hit.kind === 'piece') {
+                    selectedPieceKey = hit.pieceKey;
+                    syncSelectedLibraryPiece(hit.piece);
+                    updatePieceHighlights();
+                    startPlacementSession(hit);
+                    return;
                 }
 
                 if (hit.kind === 'cell') {
-                    if (selectedEditMode === 'delete') return;
                     startPlacementSession(hit);
                 }
             }
 
             function onViewportPointerMove(event) {
                 const hit = getViewportHit(event);
+                viewportLastHit = hit;
                 hoveredPieceKey = hit?.kind === 'piece' ? hit.pieceKey : null;
                 updatePieceHighlights();
 
@@ -1951,9 +2222,24 @@
                 if (!hit) return;
 
                 event.preventDefault();
-                controls.enabled = false;
                 viewportPointerDown = { x: event.clientX, y: event.clientY };
+                controls.enabled = selectedCadTool !== 'insert';
                 applyViewportAction(hit);
+            }
+
+            function onViewportContextMenu(event) {
+                event.preventDefault();
+                const hit = getViewportHit(event);
+                if (!hit) return;
+                viewportLastHit = hit;
+                if (hit.kind === 'piece') {
+                    selectedPieceKey = hit.pieceKey;
+                    syncSelectedLibraryPiece(hit.piece);
+                    updatePieceHighlights();
+                }
+
+                const rect = renderer.domElement.getBoundingClientRect();
+                openViewportContextMenu(event.clientX - rect.left, event.clientY - rect.top, hit);
             }
 
             function onViewportPointerUp(event) {
@@ -2001,7 +2287,29 @@
             initThree();
             applySettingsToControls(getActiveProject());
             updateProjectSummary();
-            updateCadStatus('Scegli un pezzo dalla libreria, poi clicca o trascina sul mosaico per piazzarlo. Delete rimuove il pezzo selezionato.', 'Inserisci');
+            setCadTool('select');
+
+            document.querySelectorAll('[data-cad-tool]').forEach(button => {
+                button.addEventListener('click', () => setCadTool(button.dataset.cadTool));
+            });
+
+            cadCopyBtn.addEventListener('click', () => {
+                const piece = viewportLastHit?.kind === 'piece' ? viewportLastHit.piece : getSelectedBuildPiece();
+                if (piece) setCadClipboardFromPiece(piece);
+            });
+            cadPasteBtn.addEventListener('click', () => {
+                const hit = viewportLastHit || getViewportHit({ clientX: renderer.domElement.getBoundingClientRect().left + 8, clientY: renderer.domElement.getBoundingClientRect().top + 8 });
+                const targetRow = hit?.kind === 'piece' ? hit.piece.row : (hit?.row ?? 0);
+                const targetCol = hit?.kind === 'piece' ? hit.piece.col : (hit?.col ?? 0);
+                pasteClipboardAt(targetRow, targetCol);
+            });
+            cadCutBtn.addEventListener('click', () => {
+                const piece = viewportLastHit?.kind === 'piece' ? viewportLastHit.piece : getSelectedBuildPiece();
+                if (piece) {
+                    setCadClipboardFromPiece(piece);
+                    deletePieceFromViewport(piece);
+                }
+            });
 
             height3dInput.addEventListener('input', (e) => {
                 height3dValue.textContent = 'Livello ' + e.target.value;
@@ -2150,6 +2458,54 @@
                 commitEditFromForm();
             });
 
+            document.getElementById('viewportContextMenu').addEventListener('click', (event) => {
+                const button = event.target.closest('[data-cad-action]');
+                if (!button || !viewportContextMenuState) return;
+                const hit = viewportContextMenuState.hit;
+                const action = button.dataset.cadAction;
+
+                if (action === 'copy') {
+                    if (hit?.kind === 'piece') setCadClipboardFromPiece(hit.piece);
+                    else if (selectedPieceKey) setCadClipboardFromPiece(getSelectedBuildPiece());
+                    else if (selectedEditTarget === 'area') setCadClipboardFromArea({
+                        shapeType: selectedLibraryShape.shapeType,
+                        studsX: Math.max(1, parseInt(editWidthInput.value, 10) || 1),
+                        studsY: Math.max(1, parseInt(editHeightInput.value, 10) || 1),
+                        hex: selectedLibraryHex,
+                        plates: 1,
+                        transparent: LEGO_PALETTE_TRANS.some(color => color.hex === selectedLibraryHex)
+                    });
+                } else if (action === 'cut') {
+                    if (hit?.kind === 'piece') {
+                        setCadClipboardFromPiece(hit.piece);
+                        deletePieceFromViewport(hit.piece);
+                    } else if (selectedPieceKey) {
+                        const piece = getSelectedBuildPiece();
+                        if (piece) {
+                            setCadClipboardFromPiece(piece);
+                            deletePieceFromViewport(piece);
+                        }
+                    }
+                } else if (action === 'paste') {
+                    const targetRow = hit?.kind === 'piece' ? hit.piece.row : (hit?.row ?? 0);
+                    const targetCol = hit?.kind === 'piece' ? hit.piece.col : (hit?.col ?? 0);
+                    pasteClipboardAt(targetRow, targetCol);
+                } else if (action === 'select-area') {
+                    selectAreaFromHit(hit);
+                } else if (action === 'delete') {
+                    if (hit?.kind === 'piece') deletePieceFromViewport(hit.piece);
+                    else if (selectedPieceKey) deleteSelectedPiece();
+                }
+
+                closeViewportContextMenu();
+            });
+
+            document.addEventListener('pointerdown', (event) => {
+                const menu = document.getElementById('viewportContextMenu');
+                if (!menu || menu.classList.contains('hidden')) return;
+                if (!menu.contains(event.target)) closeViewportContextMenu();
+            });
+
             clearEditsBtn.addEventListener('click', () => {
                 const project = getActiveProject();
                 if (!project) return;
@@ -2188,6 +2544,46 @@
             });
 
             document.addEventListener('keydown', (event) => {
+                const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+                if (isTyping) return;
+
+                const hasClipboardShortcut = event.metaKey || event.ctrlKey;
+                if (hasClipboardShortcut && event.key.toLowerCase() === 'c') {
+                    event.preventDefault();
+                    const piece = viewportLastHit?.kind === 'piece' ? viewportLastHit.piece : getSelectedBuildPiece();
+                    if (piece) setCadClipboardFromPiece(piece);
+                    else if (selectedEditTarget === 'area') {
+                        setCadClipboardFromArea({
+                            shapeType: selectedLibraryShape.shapeType,
+                            studsX: Math.max(1, parseInt(editWidthInput.value, 10) || 1),
+                            studsY: Math.max(1, parseInt(editHeightInput.value, 10) || 1),
+                            hex: selectedLibraryHex,
+                            plates: 1,
+                            transparent: LEGO_PALETTE_TRANS.some(color => color.hex === selectedLibraryHex)
+                        });
+                    }
+                    return;
+                }
+
+                if (hasClipboardShortcut && event.key.toLowerCase() === 'x') {
+                    event.preventDefault();
+                    const piece = viewportLastHit?.kind === 'piece' ? viewportLastHit.piece : getSelectedBuildPiece();
+                    if (piece) {
+                        setCadClipboardFromPiece(piece);
+                        deletePieceFromViewport(piece);
+                    }
+                    return;
+                }
+
+                if (hasClipboardShortcut && event.key.toLowerCase() === 'v') {
+                    event.preventDefault();
+                    const hit = viewportLastHit || getViewportHit({ clientX: renderer.domElement.getBoundingClientRect().left + 8, clientY: renderer.domElement.getBoundingClientRect().top + 8 });
+                    const targetRow = hit?.kind === 'piece' ? hit.piece.row : (hit?.row ?? 0);
+                    const targetCol = hit?.kind === 'piece' ? hit.piece.col : (hit?.col ?? 0);
+                    pasteClipboardAt(targetRow, targetCol);
+                    return;
+                }
+
                 if (event.key === 'Delete' || event.key === 'Backspace') {
                     if (!selectedPieceKey) return;
                     const project = getActiveProject();
@@ -2205,6 +2601,7 @@
                 if (event.key === 'Escape') {
                     placementSession = null;
                     clearPlacementGhost();
+                    closeViewportContextMenu();
                 }
             });
 
@@ -2304,6 +2701,11 @@
             async function build3dLegoMosaic() {
                 const project = getActiveProject();
                 if (!project || !loadedImage) return;
+                const previousView = camera && controls ? {
+                    position: camera.position.clone(),
+                    target: controls.target.clone(),
+                    zoom: camera.zoom
+                } : null;
 
                 syncControlsToProject(project);
                 setLoadingState(true, 'Ricreo il mosaico 3D...');
@@ -2538,9 +2940,17 @@
                     updatePieceHighlights();
                     renderGridPicker();
 
-                    const camDist = Math.max(gridCols, gridRows) * 1.5;
-                    camera.position.set(0, -camDist * 0.8, camDist * 0.9);
-                    controls.target.set(0, 0, maxExtrusion * 0.5);
+                    if (previousView) {
+                        camera.position.copy(previousView.position);
+                        controls.target.copy(previousView.target);
+                        camera.zoom = previousView.zoom;
+                        camera.updateProjectionMatrix();
+                    } else {
+                        const camDist = Math.max(gridCols, gridRows) * 1.5;
+                        camera.position.set(0, -camDist * 0.8, camDist * 0.9);
+                        controls.target.set(0, 0, maxExtrusion * 0.5);
+                    }
+                    controls.update();
                 } finally {
                     setLoadingState(false);
                 }

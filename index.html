@@ -33,17 +33,17 @@
         .color-swatch { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); display: inline-block; vertical-align: middle; }
         .project-tab.active {
             border-color: #facc15;
-            background: linear-gradient(180deg, rgba(250, 204, 21, 0.16), rgba(15, 23, 42, 0.95));
+            background: linear-gradient(180deg, rgba(250, 204, 21, 0.14), rgba(15, 23, 42, 0.98));
             color: #facc15;
-            transform: translateY(-2px);
-            box-shadow: 0 -4px 14px rgba(250, 204, 21, 0.10), inset 0 1px 0 rgba(255,255,255,0.06);
+            transform: translateY(-1px);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
         }
         .project-tab-shell {
             position: relative;
-            margin-right: -11px;
+            margin-right: -3px;
         }
         .project-tab {
-            clip-path: polygon(12px 100%, 0 16px, 14px 0, calc(100% - 14px) 0, 100% 16px, calc(100% - 12px) 100%);
+            border-radius: 8px 8px 4px 4px;
             border-bottom-width: 0;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 -1px 0 rgba(15,23,42,0.9);
             position: relative;
@@ -61,14 +61,14 @@
             pointer-events: auto;
         }
         .project-tab-action-btn {
-            width: 1.5rem;
-            height: 1.5rem;
-            border-radius: 0.5rem;
+            width: 1.35rem;
+            height: 1.35rem;
+            border-radius: 0.35rem;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: rgba(15, 23, 42, 0.95);
-            border: 1px solid rgba(51, 65, 85, 1);
+            background: rgba(15, 23, 42, 0.82);
+            border: 1px solid rgba(51, 65, 85, 0.9);
             color: #cbd5e1;
         }
         .project-tab-action-btn:first-child {
@@ -413,7 +413,7 @@
                     <span class="bg-red-600/20 text-red-400 px-2.5 py-1 rounded-md font-semibold border border-red-500/30 flex items-center gap-1.5">
                         <i class="fa-solid fa-cube"></i> Vista 3D Interattiva WebGL
                     </span>
-                    <span class="text-slate-400 hidden lg:inline"><i class="fa-solid fa-hand-pointer text-yellow-400"></i> Ruota con il mouse / Trascina per esplorare la profondità 3D</span>
+                    <span class="text-slate-400 hidden lg:inline"><i class="fa-solid fa-hand-pointer text-yellow-400"></i> Clicca sul mosaico per modificare, trascina per ruotare</span>
                 </div>
 
                 <button id="resetCamBtn" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition flex items-center gap-1.5">
@@ -437,9 +437,8 @@
                     <div class="rounded-2xl border border-slate-700 bg-slate-900/90 backdrop-blur-md shadow-2xl overflow-hidden">
                         <div class="px-3 py-2 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-300">
                             <span class="font-semibold text-yellow-400 flex items-center gap-1.5"><i class="fa-solid fa-border-all"></i> Modifica diretta</span>
-                            <span>Clicca per selezionare</span>
+                            <span>Clicca sul mosaico</span>
                         </div>
-                        <canvas id="layoutGridPickerCanvas" width="320" height="220" class="w-full block bg-slate-950 cursor-crosshair"></canvas>
                         <div class="p-3 border-t border-slate-800 grid grid-cols-4 gap-2 text-[10px]">
                             <button type="button" data-edit-mode="insert" class="edit-mode-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 font-semibold">Inserisci</button>
                             <button type="button" data-edit-mode="modify" class="edit-mode-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 font-semibold">Modifica</button>
@@ -519,16 +518,6 @@
                         <i class="fa-solid fa-plus"></i>
                         <span>APPLICA AL PROGETTO</span>
                     </button>
-                </div>
-
-                <div class="space-y-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
-                        <i class="fa-solid fa-border-all"></i> Griglia interattiva
-                    </span>
-                    <div class="bg-slate-800/60 border border-slate-700 rounded-2xl p-2">
-                        <canvas id="gridPickerCanvas" width="256" height="256" class="w-full rounded-xl bg-slate-950 cursor-crosshair"></canvas>
-                    </div>
-                    <p class="text-[10px] text-slate-500">Clicca una cella per compilare riga e colonna, poi scegli inserisci/modifica/cancella.</p>
                 </div>
 
                 <div class="space-y-2">
@@ -823,63 +812,58 @@
 
             function renderGridPicker() {
                 const build = getActiveProject()?.lastBuild || lastBuild;
-                const canvases = [
-                    { canvas: gridPickerCanvas, ctx: gridPickerCtx },
-                    { canvas: layoutGridPickerCanvas, ctx: layoutGridPickerCtx }
-                ];
+                const canvas = layoutGridPickerCanvas;
+                const ctx = layoutGridPickerCtx;
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-                canvases.forEach(({ canvas, ctx }) => {
-                    const canvasWidth = canvas.width;
-                    const canvasHeight = canvas.height;
-                    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-                    ctx.fillStyle = '#0f172a';
-                    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                if (!build) {
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = '12px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText("Carica un'immagine", canvasWidth / 2, canvasHeight / 2);
+                    return;
+                }
 
-                    if (!build) {
-                        ctx.fillStyle = '#64748b';
-                        ctx.font = '12px Inter, sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText("Carica un'immagine", canvasWidth / 2, canvasHeight / 2);
-                        return;
-                    }
+                const cols = build.gridCols || build.gridSize;
+                const rows = build.gridRows || build.gridSize;
+                const cellWidth = canvasWidth / cols;
+                const cellHeight = canvasHeight / rows;
+                ctx.strokeStyle = 'rgba(148,163,184,0.16)';
+                ctx.lineWidth = 1;
 
-                    const cols = build.gridCols || build.gridSize;
-                    const rows = build.gridRows || build.gridSize;
-                    const cellWidth = canvasWidth / cols;
-                    const cellHeight = canvasHeight / rows;
-                    ctx.strokeStyle = 'rgba(148,163,184,0.16)';
-                    ctx.lineWidth = 1;
+                for (let i = 0; i <= cols; i++) {
+                    const pos = i * cellWidth;
+                    ctx.beginPath();
+                    ctx.moveTo(pos, 0);
+                    ctx.lineTo(pos, canvasHeight);
+                    ctx.stroke();
+                }
+                for (let i = 0; i <= rows; i++) {
+                    const pos = i * cellHeight;
+                    ctx.beginPath();
+                    ctx.moveTo(0, pos);
+                    ctx.lineTo(canvasWidth, pos);
+                    ctx.stroke();
+                }
 
-                    for (let i = 0; i <= cols; i++) {
-                        const pos = i * cellWidth;
-                        ctx.beginPath();
-                        ctx.moveTo(pos, 0);
-                        ctx.lineTo(pos, canvasHeight);
-                        ctx.stroke();
-                    }
-                    for (let i = 0; i <= rows; i++) {
-                        const pos = i * cellHeight;
-                        ctx.beginPath();
-                        ctx.moveTo(0, pos);
-                        ctx.lineTo(canvasWidth, pos);
-                        ctx.stroke();
-                    }
-
-                    build.placedPieces.forEach(piece => {
-                        const x = piece.col * cellWidth;
-                        const y = piece.row * cellHeight;
-                        const w = piece.studsX * cellWidth;
-                        const h = piece.studsY * cellHeight;
-                        ctx.fillStyle = '#' + piece.hex.toString(16).padStart(6, '0');
-                        ctx.fillRect(x + 1, y + 1, Math.max(1, w - 2), Math.max(1, h - 2));
-                    });
-
-                    const selectedRow = Math.max(0, (parseInt(editRowInput.value, 10) || 1) - 1);
-                    const selectedCol = Math.max(0, (parseInt(editColInput.value, 10) || 1) - 1);
-                    ctx.strokeStyle = '#facc15';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(selectedCol * cellWidth + 1, selectedRow * cellHeight + 1, cellWidth - 2, cellHeight - 2);
+                build.placedPieces.forEach(piece => {
+                    const x = piece.col * cellWidth;
+                    const y = piece.row * cellHeight;
+                    const w = piece.studsX * cellWidth;
+                    const h = piece.studsY * cellHeight;
+                    ctx.fillStyle = '#' + piece.hex.toString(16).padStart(6, '0');
+                    ctx.fillRect(x + 1, y + 1, Math.max(1, w - 2), Math.max(1, h - 2));
                 });
+
+                const selectedRow = Math.max(0, (parseInt(editRowInput.value, 10) || 1) - 1);
+                const selectedCol = Math.max(0, (parseInt(editColInput.value, 10) || 1) - 1);
+                ctx.strokeStyle = '#facc15';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(selectedCol * cellWidth + 1, selectedRow * cellHeight + 1, cellWidth - 2, cellHeight - 2);
             }
 
                 function renderImageIntoAnalysisCanvas(project, canvasWidth, canvasHeight) {
@@ -1599,8 +1583,6 @@
             const saveModalText = document.getElementById('saveModalText');
             const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
             const globalLoadingLabel = document.getElementById('globalLoadingLabel');
-            const gridPickerCanvas = document.getElementById('gridPickerCanvas');
-            const gridPickerCtx = gridPickerCanvas.getContext('2d');
             const layoutGridPickerCanvas = document.getElementById('layoutGridPickerCanvas');
             const layoutGridPickerCtx = layoutGridPickerCanvas.getContext('2d');
             const layoutApplyEditBtn = document.getElementById('layoutApplyEditBtn');
@@ -1608,6 +1590,9 @@
             // THREE.JS Scene state
             let loadedImage = null;
             let scene, camera, renderer, controls, legoGroup;
+            const raycaster = new THREE.Raycaster();
+            const viewportPointer = new THREE.Vector2();
+            let viewportPointerDown = null;
 
             function initThree() {
                 scene = new THREE.Scene();
@@ -1650,8 +1635,74 @@
                 legoGroup = new THREE.Group();
                 scene.add(legoGroup);
 
+                renderer.domElement.addEventListener('pointerdown', onViewportPointerDown);
+                renderer.domElement.addEventListener('pointerup', onViewportPointerUp);
+
                 window.addEventListener('resize', onWindowResize);
                 animate();
+            }
+
+            function getBuildForDirectEdit() {
+                return getActiveProject()?.lastBuild || lastBuild;
+            }
+
+            function worldPointToGrid(point, build) {
+                const cols = build.gridCols || build.gridSize;
+                const rows = build.gridRows || build.gridSize;
+                const pitch = 1.2;
+                const col = Math.max(0, Math.min(cols - 1, Math.floor((point.x / pitch) + (cols / 2))));
+                const row = Math.max(0, Math.min(rows - 1, Math.floor((rows / 2) - (point.y / pitch))));
+                return { row, col };
+            }
+
+            function applyDirectEditAtGridCell(row, col) {
+                editRowInput.value = String(row + 1);
+                editColInput.value = String(col + 1);
+                commitEditFromForm();
+                renderGridPicker();
+            }
+
+            function applyDirectEditFromIntersection(intersection, build) {
+                const piece = intersection.object?.userData?.piece;
+                if (piece) {
+                    applyDirectEditAtGridCell(piece.row, piece.col);
+                    return true;
+                }
+
+                if (intersection.object?.userData?.isBaseplate) {
+                    const cell = worldPointToGrid(intersection.point, build);
+                    applyDirectEditAtGridCell(cell.row, cell.col);
+                    return true;
+                }
+
+                return false;
+            }
+
+            function onViewportPointerDown(event) {
+                if (event.button !== 0) return;
+                viewportPointerDown = { x: event.clientX, y: event.clientY };
+            }
+
+            function onViewportPointerUp(event) {
+                if (!viewportPointerDown || event.button !== 0) return;
+                const distance = Math.hypot(event.clientX - viewportPointerDown.x, event.clientY - viewportPointerDown.y);
+                viewportPointerDown = null;
+                if (distance > 6) return;
+
+                const build = getBuildForDirectEdit();
+                if (!build || !legoGroup || !renderer || !camera) return;
+
+                const rect = renderer.domElement.getBoundingClientRect();
+                viewportPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                viewportPointer.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+                raycaster.setFromCamera(viewportPointer, camera);
+
+                const intersections = raycaster.intersectObjects(legoGroup.children, true);
+                for (const intersection of intersections) {
+                    if (applyDirectEditFromIntersection(intersection, build)) {
+                        return;
+                    }
+                }
             }
 
             function animate() {
@@ -1800,7 +1851,6 @@
                 }
             }
 
-            gridPickerCanvas.addEventListener('click', (event) => handleGridPickerClick(event, gridPickerCanvas));
             layoutGridPickerCanvas.addEventListener('click', (event) => handleGridPickerClick(event, layoutGridPickerCanvas));
 
             newProjectBtn.addEventListener('click', () => {
@@ -2202,6 +2252,7 @@
                 const posX = (col + studsX / 2 - gridCols / 2) * pitch;
                 const posY = -(row + studsY / 2 - gridRows / 2) * pitch;
                 const posZ = brickDepth / 2;
+                const pieceMeta = { row, col, studsX, studsY, shapeType, hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent };
 
                 const material = new THREE.MeshStandardMaterial({
                     color: cell.hex,
@@ -2228,6 +2279,7 @@
                 }
 
                 bodyMesh.position.set(posX, posY, posZ);
+                bodyMesh.userData.piece = pieceMeta;
                 bodyMesh.castShadow = true;
                 bodyMesh.receiveShadow = true;
                 legoGroup.add(bodyMesh);
@@ -2246,6 +2298,7 @@
                         const sZ = brickDepth + studHeight / 2;
 
                         studMesh.position.set(sX, sY, sZ);
+                        studMesh.userData.piece = pieceMeta;
                         studMesh.castShadow = true;
                         studMesh.receiveShadow = true;
                         legoGroup.add(studMesh);

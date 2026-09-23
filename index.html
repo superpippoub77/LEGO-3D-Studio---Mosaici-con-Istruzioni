@@ -390,6 +390,22 @@
                 </div>
 
                 <div id="webglContainer" class="w-full h-full absolute inset-0"></div>
+
+                <div class="absolute right-3 bottom-3 z-20 w-72 md:w-80 pointer-events-auto">
+                    <div class="rounded-2xl border border-slate-700 bg-slate-900/90 backdrop-blur-md shadow-2xl overflow-hidden">
+                        <div class="px-3 py-2 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-300">
+                            <span class="font-semibold text-yellow-400 flex items-center gap-1.5"><i class="fa-solid fa-border-all"></i> Modifica diretta</span>
+                            <span>Clicca per selezionare</span>
+                        </div>
+                        <canvas id="layoutGridPickerCanvas" width="320" height="220" class="w-full block bg-slate-950 cursor-crosshair"></canvas>
+                        <div class="p-3 border-t border-slate-800 grid grid-cols-4 gap-2 text-[10px]">
+                            <button type="button" data-edit-mode="insert" class="edit-mode-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 font-semibold">Inserisci</button>
+                            <button type="button" data-edit-mode="modify" class="edit-mode-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 font-semibold">Modifica</button>
+                            <button type="button" data-edit-mode="delete" class="edit-mode-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 font-semibold">Cancella</button>
+                            <button id="layoutApplyEditBtn" type="button" class="px-2 py-2 rounded-lg border border-yellow-500 bg-yellow-500 text-slate-950 font-bold">Applica</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
@@ -711,55 +727,69 @@
 
             function renderGridPicker() {
                 const build = getActiveProject()?.lastBuild || lastBuild;
-                const canvasSize = gridPickerCanvas.width;
-                gridPickerCtx.clearRect(0, 0, canvasSize, canvasSize);
-                gridPickerCtx.fillStyle = '#0f172a';
-                gridPickerCtx.fillRect(0, 0, canvasSize, canvasSize);
+                const canvases = [
+                    { canvas: gridPickerCanvas, ctx: gridPickerCtx },
+                    { canvas: layoutGridPickerCanvas, ctx: layoutGridPickerCtx }
+                ];
 
-                if (!build) {
-                    gridPickerCtx.fillStyle = '#64748b';
-                    gridPickerCtx.font = '12px Inter, sans-serif';
-                    gridPickerCtx.textAlign = 'center';
-                    gridPickerCtx.fillText("Carica un'immagine", canvasSize / 2, canvasSize / 2);
-                    return;
-                }
+                canvases.forEach(({ canvas, ctx }) => {
+                    const canvasWidth = canvas.width;
+                    const canvasHeight = canvas.height;
+                    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-                const cellSize = canvasSize / build.gridSize;
-                gridPickerCtx.strokeStyle = 'rgba(148,163,184,0.16)';
-                gridPickerCtx.lineWidth = 1;
+                    if (!build) {
+                        ctx.fillStyle = '#64748b';
+                        ctx.font = '12px Inter, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText("Carica un'immagine", canvasWidth / 2, canvasHeight / 2);
+                        return;
+                    }
 
-                for (let i = 0; i <= build.gridSize; i++) {
-                    const pos = i * cellSize;
-                    gridPickerCtx.beginPath();
-                    gridPickerCtx.moveTo(pos, 0);
-                    gridPickerCtx.lineTo(pos, canvasSize);
-                    gridPickerCtx.stroke();
-                    gridPickerCtx.beginPath();
-                    gridPickerCtx.moveTo(0, pos);
-                    gridPickerCtx.lineTo(canvasSize, pos);
-                    gridPickerCtx.stroke();
-                }
+                    const cols = build.gridCols || build.gridSize;
+                    const rows = build.gridRows || build.gridSize;
+                    const cellWidth = canvasWidth / cols;
+                    const cellHeight = canvasHeight / rows;
+                    ctx.strokeStyle = 'rgba(148,163,184,0.16)';
+                    ctx.lineWidth = 1;
 
-                build.placedPieces.forEach(piece => {
-                    const x = piece.col * cellSize;
-                    const y = piece.row * cellSize;
-                    const w = piece.studsX * cellSize;
-                    const h = piece.studsY * cellSize;
-                    gridPickerCtx.fillStyle = '#' + piece.hex.toString(16).padStart(6, '0');
-                    gridPickerCtx.fillRect(x + 1, y + 1, Math.max(1, w - 2), Math.max(1, h - 2));
+                    for (let i = 0; i <= cols; i++) {
+                        const pos = i * cellWidth;
+                        ctx.beginPath();
+                        ctx.moveTo(pos, 0);
+                        ctx.lineTo(pos, canvasHeight);
+                        ctx.stroke();
+                    }
+                    for (let i = 0; i <= rows; i++) {
+                        const pos = i * cellHeight;
+                        ctx.beginPath();
+                        ctx.moveTo(0, pos);
+                        ctx.lineTo(canvasWidth, pos);
+                        ctx.stroke();
+                    }
+
+                    build.placedPieces.forEach(piece => {
+                        const x = piece.col * cellWidth;
+                        const y = piece.row * cellHeight;
+                        const w = piece.studsX * cellWidth;
+                        const h = piece.studsY * cellHeight;
+                        ctx.fillStyle = '#' + piece.hex.toString(16).padStart(6, '0');
+                        ctx.fillRect(x + 1, y + 1, Math.max(1, w - 2), Math.max(1, h - 2));
+                    });
+
+                    const selectedRow = Math.max(0, (parseInt(editRowInput.value, 10) || 1) - 1);
+                    const selectedCol = Math.max(0, (parseInt(editColInput.value, 10) || 1) - 1);
+                    ctx.strokeStyle = '#facc15';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(selectedCol * cellWidth + 1, selectedRow * cellHeight + 1, cellWidth - 2, cellHeight - 2);
                 });
-
-                const selectedRow = Math.max(0, (parseInt(editRowInput.value, 10) || 1) - 1);
-                const selectedCol = Math.max(0, (parseInt(editColInput.value, 10) || 1) - 1);
-                gridPickerCtx.strokeStyle = '#facc15';
-                gridPickerCtx.lineWidth = 2;
-                gridPickerCtx.strokeRect(selectedCol * cellSize + 1, selectedRow * cellSize + 1, cellSize - 2, cellSize - 2);
             }
 
-            function renderImageIntoAnalysisCanvas(project, canvasSize) {
-                analysisCanvas.width = canvasSize;
-                analysisCanvas.height = canvasSize;
-                analysisCtx.clearRect(0, 0, canvasSize, canvasSize);
+                function renderImageIntoAnalysisCanvas(project, canvasWidth, canvasHeight) {
+                    analysisCanvas.width = canvasWidth;
+                    analysisCanvas.height = canvasHeight;
+                    analysisCtx.clearRect(0, 0, canvasWidth, canvasHeight);
 
                 if (!loadedImage) return;
 
@@ -778,7 +808,7 @@
                 const offsetY = Math.max(-1, Math.min(1, (project.settings.frameOffsetY || 0) / 100));
                 const cropX = Math.max(0, Math.min(maxOffsetX, (loadedImage.width - cropWidth) / 2 + offsetX * maxOffsetX / 2));
                 const cropY = Math.max(0, Math.min(maxOffsetY, (loadedImage.height - cropHeight) / 2 + offsetY * maxOffsetY / 2));
-                analysisCtx.drawImage(loadedImage, cropX, cropY, cropWidth, cropHeight, 0, 0, canvasSize, canvasSize);
+                analysisCtx.drawImage(loadedImage, cropX, cropY, cropWidth, cropHeight, 0, 0, canvasWidth, canvasHeight);
             }
 
             function createInitialProject() {
@@ -1469,6 +1499,9 @@
             const globalLoadingLabel = document.getElementById('globalLoadingLabel');
             const gridPickerCanvas = document.getElementById('gridPickerCanvas');
             const gridPickerCtx = gridPickerCanvas.getContext('2d');
+            const layoutGridPickerCanvas = document.getElementById('layoutGridPickerCanvas');
+            const layoutGridPickerCtx = layoutGridPickerCanvas.getContext('2d');
+            const layoutApplyEditBtn = document.getElementById('layoutApplyEditBtn');
 
             // THREE.JS Scene state
             let loadedImage = null;
@@ -1647,18 +1680,23 @@
                 framePreview.classList.add('cursor-grab');
             });
 
-            gridPickerCanvas.addEventListener('click', (event) => {
+            function handleGridPickerClick(event, canvas) {
                 const build = getActiveProject()?.lastBuild || lastBuild;
                 if (!build) return;
-                const rect = gridPickerCanvas.getBoundingClientRect();
+                const rect = canvas.getBoundingClientRect();
                 const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
                 const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-                const row = Math.min(build.gridSize - 1, Math.floor((y / rect.height) * build.gridSize));
-                const col = Math.min(build.gridSize - 1, Math.floor((x / rect.width) * build.gridSize));
+                const cols = build.gridCols || build.gridSize;
+                const rows = build.gridRows || build.gridSize;
+                const row = Math.min(rows - 1, Math.floor((y / rect.height) * rows));
+                const col = Math.min(cols - 1, Math.floor((x / rect.width) * cols));
                 editRowInput.value = String(row + 1);
                 editColInput.value = String(col + 1);
                 renderGridPicker();
-            });
+            }
+
+            gridPickerCanvas.addEventListener('click', (event) => handleGridPickerClick(event, gridPickerCanvas));
+            layoutGridPickerCanvas.addEventListener('click', (event) => handleGridPickerClick(event, layoutGridPickerCanvas));
 
             newProjectBtn.addEventListener('click', () => {
                 const project = createProject(`Progetto ${projects.length + 1}`);
@@ -1672,6 +1710,10 @@
                 project.manualEdits.push(createEditFromForm());
                 renderEditList();
                 build3dLegoMosaic();
+            });
+
+            layoutApplyEditBtn.addEventListener('click', () => {
+                applyEditBtn.click();
             });
 
             clearEditsBtn.addEventListener('click', () => {
@@ -1810,7 +1852,8 @@
                 setLoadingState(true, 'Ricreo il mosaico 3D...');
                 await new Promise(requestAnimationFrame);
                 try {
-                    const gridSize = project.settings.studSize;
+                    const gridCols = project.settings.studSize;
+                    const gridRows = Math.max(1, Math.round(project.settings.studSize * (project.settings.frameHeight / project.settings.frameWidth)));
                     const maxExtrusion = project.settings.height3d;
                     const shapeMode = project.settings.brickShape;
                     const usePalette = project.settings.useOfficialPalette;
@@ -1819,15 +1862,15 @@
                     const cVal = project.settings.contrast;
                     const factor = (259 * (cVal + 255)) / (255 * (259 - cVal));
 
-                    renderImageIntoAnalysisCanvas(project, gridSize);
+                    renderImageIntoAnalysisCanvas(project, gridCols, gridRows);
 
-                    const imgData = analysisCtx.getImageData(0, 0, gridSize, gridSize).data;
+                    const imgData = analysisCtx.getImageData(0, 0, gridCols, gridRows).data;
                     const grid = [];
 
-                    for (let r = 0; r < gridSize; r++) {
+                    for (let r = 0; r < gridRows; r++) {
                         grid[r] = [];
-                        for (let c = 0; c < gridSize; c++) {
-                            const idx = (r * gridSize + c) * 4;
+                        for (let c = 0; c < gridCols; c++) {
+                            const idx = (r * gridCols + c) * 4;
                             let red = imgData[idx];
                             let green = imgData[idx + 1];
                             let blue = imgData[idx + 2];
@@ -1869,8 +1912,9 @@
                     }
 
                     const studPitch = 1.2;
-                    const basePlateWidth = gridSize * studPitch;
-                    const baseGeo = new THREE.BoxGeometry(basePlateWidth + 0.8, basePlateWidth + 0.8, 0.8);
+                    const basePlateWidth = gridCols * studPitch;
+                    const basePlateHeight = gridRows * studPitch;
+                    const baseGeo = new THREE.BoxGeometry(basePlateWidth + 0.8, basePlateHeight + 0.8, 0.8);
                     const baseMat = new THREE.MeshStandardMaterial({ color: project.settings.baseplateHex, roughness: 0.5 });
                     const baseMesh = new THREE.Mesh(baseGeo, baseMat);
                     baseMesh.userData.isBaseplate = true;
@@ -1879,12 +1923,35 @@
                     legoGroup.add(baseMesh);
 
                     let cRound = 0, c11 = 0, c12 = 0, c22 = 0;
-                    const used = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
+                    const used = Array.from({ length: gridRows }, () => Array(gridCols).fill(false));
                     const placedPieces = [];
                     let maxPlates = 1;
 
-                    for (let r = 0; r < gridSize; r++) {
-                        for (let c = 0; c < gridSize; c++) {
+                    function canPlaceRect(startRow, startCol, width, height) {
+                        if (startRow + height > gridRows || startCol + width > gridCols) return false;
+                        const baseCell = grid[startRow][startCol];
+                        for (let row = startRow; row < startRow + height; row++) {
+                            for (let col = startCol; col < startCol + width; col++) {
+                                if (used[row][col]) return false;
+                                if (!sameColor(baseCell, grid[row][col])) return false;
+                            }
+                        }
+                        return true;
+                    }
+
+                    function placeRect(startRow, startCol, width, height, shapeType) {
+                        const cell = grid[startRow][startCol];
+                        for (let row = startRow; row < startRow + height; row++) {
+                            for (let col = startCol; col < startCol + width; col++) {
+                                used[row][col] = true;
+                            }
+                        }
+                        create3DBrick(startCol, startRow, width, height, shapeType, cell, studPitch, gridCols, gridRows);
+                        placedPieces.push({ row: startRow, col: startCol, studsX: width, studsY: height, shapeType, hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                    }
+
+                    for (let r = 0; r < gridRows; r++) {
+                        for (let c = 0; c < gridCols; c++) {
                             if (used[r][c]) continue;
 
                             const cell = grid[r][c];
@@ -1893,7 +1960,7 @@
                             if (shapeMode === 'realMixed') {
                                 if ((r + c) % 5 === 0 || cell.luminance > 0.8) {
                                     used[r][c] = true;
-                                    create3DBrick(c, r, 1, 1, 'round', cell, studPitch, gridSize);
+                                    create3DBrick(c, r, 1, 1, 'round', cell, studPitch, gridCols, gridRows);
                                     placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'round', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
                                     cRound++;
                                     continue;
@@ -1902,32 +1969,38 @@
 
                             if (shapeMode === 'round') {
                                 used[r][c] = true;
-                                create3DBrick(c, r, 1, 1, 'round', cell, studPitch, gridSize);
+                                create3DBrick(c, r, 1, 1, 'round', cell, studPitch, gridCols, gridRows);
                                 placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'round', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
                                 cRound++;
                                 continue;
                             }
 
-                            if (c + 1 < gridSize && r + 1 < gridSize &&
-                                !used[r][c+1] && !used[r+1][c] && !used[r+1][c+1] &&
-                                sameColor(cell, grid[r][c+1]) && sameColor(cell, grid[r+1][c]) && sameColor(cell, grid[r+1][c+1])) {
-                                used[r][c] = used[r][c+1] = used[r+1][c] = used[r+1][c+1] = true;
-                                create3DBrick(c, r, 2, 2, 'square', cell, studPitch, gridSize);
-                                placedPieces.push({ row: r, col: c, studsX: 2, studsY: 2, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
-                                c22++;
-                                continue;
+                            const longPieceCandidates = [
+                                { width: 6, height: 2 },
+                                { width: 6, height: 1 },
+                                { width: 4, height: 2 },
+                                { width: 4, height: 1 },
+                                { width: 2, height: 2 },
+                                { width: 1, height: 2 }
+                            ];
+
+                            let placedLongPiece = false;
+                            for (const candidate of longPieceCandidates) {
+                                if (canPlaceRect(r, c, candidate.width, candidate.height)) {
+                                    placeRect(r, c, candidate.width, candidate.height, 'square');
+                                    if (candidate.width === 2 && candidate.height === 2) c22++;
+                                    if ((candidate.width === 2 && candidate.height === 1) || (candidate.width === 1 && candidate.height === 2)) c12++;
+                                    placedLongPiece = true;
+                                    break;
+                                }
                             }
 
-                            if (c + 1 < gridSize && !used[r][c+1] && sameColor(cell, grid[r][c+1])) {
-                                used[r][c] = used[r][c+1] = true;
-                                create3DBrick(c, r, 2, 1, 'square', cell, studPitch, gridSize);
-                                placedPieces.push({ row: r, col: c, studsX: 2, studsY: 1, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
-                                c12++;
+                            if (placedLongPiece) {
                                 continue;
                             }
 
                             used[r][c] = true;
-                            create3DBrick(c, r, 1, 1, 'square', cell, studPitch, gridSize);
+                            create3DBrick(c, r, 1, 1, 'square', cell, studPitch, gridCols, gridRows);
                             placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
                             c11++;
                         }
@@ -1945,11 +2018,11 @@
                     }
 
                     finalPieces.forEach(piece => {
-                        create3DBrick(piece.col, piece.row, piece.studsX, piece.studsY, piece.shapeType, { hex: piece.hex, plates: piece.plates, transparent: piece.transparent }, studPitch, gridSize);
+                        create3DBrick(piece.col, piece.row, piece.studsX, piece.studsY, piece.shapeType, { hex: piece.hex, plates: piece.plates, transparent: piece.transparent }, studPitch, gridCols, gridRows);
                     });
 
                     const totalBricks = finalPieces.length;
-                    const totalStuds = gridSize * gridSize;
+                    const totalStuds = gridCols * gridRows;
                     const totalPhysicalPieces = finalPieces.reduce((sum, p) => sum + p.plates, 0);
                     const roundCount = finalPieces.filter(piece => piece.shapeType === 'round').length;
                     const square1x1Count = finalPieces.filter(piece => piece.shapeType !== 'round' && piece.studsX === 1 && piece.studsY === 1).length;
@@ -1962,9 +2035,10 @@
                     count1x2.textContent = square1x2Count;
                     count2x2.textContent = square2x2Count;
 
-                    const realWidthCm = (gridSize * STUD_PITCH_MM / 10).toFixed(1);
+                    const realWidthCm = (gridCols * STUD_PITCH_MM / 10).toFixed(1);
+                    const realHeightCm = (gridRows * STUD_PITCH_MM / 10).toFixed(1);
                     const realDepthCm = (editedMaxPlates * PLATE_HEIGHT_MM / 10).toFixed(1);
-                    realFootprint.textContent = `${realWidthCm} x ${realWidthCm} cm`;
+                    realFootprint.textContent = `${realWidthCm} x ${realHeightCm} cm`;
                     realDepth.textContent = `${realDepthCm} cm`;
                     realTotalPieces.textContent = totalPhysicalPieces.toLocaleString();
                     instructionsBtn.disabled = false;
@@ -1972,16 +2046,16 @@
                     lastBuild = {
                         projectId: project.id,
                         projectName: project.name,
-                        gridSize, usePalette, placedPieces: finalPieces, maxPlates: editedMaxPlates,
+                        gridSize: gridCols, gridCols, gridRows, usePalette, placedPieces: finalPieces, maxPlates: editedMaxPlates,
                         totalPhysicalPieces, totalBricks, totalStuds,
-                        realWidthCm, realDepthCm,
+                        realWidthCm, realHeightCm, realDepthCm,
                         manualEdits: project.manualEdits.slice(),
                         projectSettings: { ...project.settings }
                     };
                     project.lastBuild = lastBuild;
                     renderGridPicker();
 
-                    const camDist = gridSize * 1.5;
+                    const camDist = Math.max(gridCols, gridRows) * 1.5;
                     camera.position.set(0, -camDist * 0.8, camDist * 0.9);
                     controls.target.set(0, 0, maxExtrusion * 0.5);
                 } finally {
@@ -1994,11 +2068,11 @@
             }
 
             // Create individual 3D Extruded LEGO Brick in Three.js
-            function create3DBrick(col, row, studsX, studsY, shapeType, cell, pitch, gridSize) {
+            function create3DBrick(col, row, studsX, studsY, shapeType, cell, pitch, gridCols, gridRows) {
                 // Spessore proporzionale al numero reale di plate impilate (rapporto reale 3.2mm/8mm = 0.4 x pitch)
                 const brickDepth = cell.plates * pitch * (PLATE_HEIGHT_MM / STUD_PITCH_MM);
-                const posX = (col + studsX / 2 - gridSize / 2) * pitch;
-                const posY = -(row + studsY / 2 - gridSize / 2) * pitch;
+                const posX = (col + studsX / 2 - gridCols / 2) * pitch;
+                const posY = -(row + studsY / 2 - gridRows / 2) * pitch;
                 const posZ = brickDepth / 2;
 
                 const material = new THREE.MeshStandardMaterial({
@@ -2063,9 +2137,10 @@
             // ---------- ISTRUZIONI DI COSTRUZIONE & DISTINTA PEZZI ----------
 
             function drawTopDownMap(canvas, build, cellPx) {
-                const size = build.gridSize;
-                canvas.width = size * cellPx;
-                canvas.height = size * cellPx;
+                    const cols = build.gridCols || build.gridSize;
+                    const rows = build.gridRows || build.gridSize;
+                    canvas.width = cols * cellPx;
+                    canvas.height = rows * cellPx;
                 const ctx = canvas.getContext('2d');
                 ctx.fillStyle = '#0f172a';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2113,13 +2188,14 @@
             function generateInstructions() {
                 if (!lastBuild) return;
                 const build = lastBuild;
-                const cellPx = build.gridSize > 60 ? 10 : (build.gridSize > 40 ? 14 : 18);
+                const baseDim = Math.max(build.gridCols || build.gridSize, build.gridRows || build.gridSize);
+                const cellPx = baseDim > 60 ? 10 : (baseDim > 40 ? 14 : 18);
 
                 drawTopDownMap(mapExportCanvas, build, cellPx);
                 const mapDataUrl = mapExportCanvas.toDataURL('image/png');
 
                 const parts = buildPartsSummary(build);
-                const rows = parts.map(p => {
+                const partRows = parts.map(p => {
                     const hexStr = '#' + p.hex.toString(16).padStart(6, '0').toUpperCase();
                     const match = LEGO_PALETTE_SOLID.concat(LEGO_PALETTE_TRANS).find(c => c.hex === p.hex);
                     const name = build.usePalette ? ((match?.name || hexStr) + (p.transparent ? ' (Trasp.)' : '')) : hexStr;
@@ -2155,8 +2231,9 @@
                 const rowBandSize = 8;
                 const rowSteps = [];
                 let stepNumber = 3 + build.manualEdits.length;
-                for (let startRow = 0; startRow < build.gridSize; startRow += rowBandSize) {
-                    const endRow = Math.min(build.gridSize - 1, startRow + rowBandSize - 1);
+                const buildRows = build.gridRows || build.gridSize;
+                for (let startRow = 0; startRow < buildRows; startRow += rowBandSize) {
+                    const endRow = Math.min(buildRows - 1, startRow + rowBandSize - 1);
                     const pieces = build.placedPieces.filter(piece => piece.row >= startRow && piece.row <= endRow);
                     const summary = summarizePieces(pieces).slice(0, 4).map(piece => {
                         const hexStr = '#' + piece.hex.toString(16).padStart(6, '0').toUpperCase();
@@ -2190,7 +2267,7 @@
                         </div>
                         <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
                             <div class="text-slate-400 mb-1">Griglia</div>
-                            <div class="font-bold text-slate-100 text-sm">${build.gridSize} x ${build.gridSize} studs</div>
+                            <div class="font-bold text-slate-100 text-sm">${build.gridCols || build.gridSize} x ${build.gridRows || build.gridSize} studs</div>
                         </div>
                         <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
                             <div class="text-slate-400 mb-1">Pezzi fisici totali</div>

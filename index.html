@@ -31,6 +31,36 @@
         .parts-table th, .parts-table td { padding: 6px 8px; }
         .parts-table tr:nth-child(even) { background-color: rgba(255,255,255,0.03); }
         .color-swatch { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); display: inline-block; vertical-align: middle; }
+        .project-tab.active {
+            border-color: #facc15;
+            background: rgba(250, 204, 21, 0.12);
+            color: #facc15;
+        }
+        .edit-mode-btn.active,
+        .edit-target-btn.active,
+        .piece-option.active {
+            border-color: #facc15;
+            background: rgba(250, 204, 21, 0.12);
+            color: #facc15;
+        }
+        .step-card {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(51, 65, 85, 0.95);
+            border-radius: 1rem;
+            padding: 0.875rem;
+        }
+        .step-badge {
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: 9999px;
+            background: rgba(250, 204, 21, 0.14);
+            color: #facc15;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.75rem;
+        }
 
         @media print {
             body * { visibility: hidden; }
@@ -60,12 +90,20 @@
         </div>
 
         <div class="flex items-center space-x-2">
+            <button id="saveProjectBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs md:text-sm rounded-xl shadow-md transition flex items-center gap-2 border border-slate-700">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Salva progetto</span>
+            </button>
             <button id="export3dBtn" disabled class="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-slate-950 font-bold text-xs md:text-sm rounded-xl shadow-md transition flex items-center gap-2">
                 <i class="fa-solid fa-camera"></i>
                 <span>Cattura Vista 3D (PNG)</span>
             </button>
         </div>
     </header>
+
+    <div class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-sm shrink-0 z-10">
+        <div class="px-3 md:px-4 py-2 flex items-center gap-2 overflow-x-auto" id="projectTabsBar"></div>
+    </div>
 
     <div class="flex flex-1 overflow-hidden relative">
 
@@ -93,6 +131,35 @@
                             <p id="sourceFileName" class="text-xs font-medium text-slate-200 truncate">immagine.jpg</p>
                             <p id="sourceDimensions" class="text-[10px] text-slate-400">0 x 0 px</p>
                         </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3 bg-slate-800/40 border border-slate-700 rounded-2xl p-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-crop-simple"></i> Cornice immagine
+                    </span>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="space-y-1">
+                            <span class="text-slate-400">Larghezza</span>
+                            <input id="frameWidthInput" type="number" min="1" value="1" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-slate-100">
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-slate-400">Altezza</span>
+                            <input id="frameHeightInput" type="number" min="1" value="1" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-slate-100">
+                        </label>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[11px] text-slate-300">
+                            <span>Zoom cornice</span>
+                            <span id="frameZoomValue" class="font-mono text-yellow-400">100%</span>
+                        </div>
+                        <input id="frameZoomInput" type="range" min="80" max="160" value="100" class="w-full accent-yellow-400 bg-slate-800 h-1.5 rounded cursor-pointer">
+                    </div>
+                    <div class="text-[10px] text-slate-400">Trascina l'immagine nel riquadro per centrarla nella cornice senza deformarla.</div>
+                    <div id="framePreview" class="relative w-full overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/80 aspect-square cursor-grab touch-none">
+                        <img id="framePreviewImage" src="" alt="Anteprima cornice" class="absolute left-1/2 top-1/2 max-w-none select-none pointer-events-none">
+                        <div class="absolute inset-0 border-2 border-dashed border-yellow-400/40 rounded-2xl pointer-events-none"></div>
+                        <div class="absolute inset-0 flex items-center justify-center text-[11px] text-slate-500 pointer-events-none" id="framePreviewEmpty">Importa un'immagine per vedere la cornice</div>
                     </div>
                 </div>
 
@@ -325,6 +392,88 @@
                 <div id="webglContainer" class="w-full h-full absolute inset-0"></div>
             </div>
         </main>
+
+        <aside id="rightSidebar" class="hidden xl:flex w-full xl:w-96 bg-slate-900/95 border-l border-slate-800 flex-col overflow-y-auto shrink-0 z-10 backdrop-blur-md">
+            <div class="p-4 md:p-5 space-y-5">
+                <div class="space-y-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group"></i> Libreria Progetto
+                    </span>
+                    <div class="bg-slate-800/70 border border-slate-700 rounded-2xl p-3 space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider text-slate-500">Immagine attiva</div>
+                                <input id="projectNameInput" type="text" value="Progetto 1" class="w-full mt-1 text-sm font-bold text-slate-100 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5">
+                            </div>
+                            <button id="newProjectBtn" class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 text-[11px] font-bold rounded-lg transition">
+                                + Nuovo tab
+                            </button>
+                        </div>
+                        <div id="activeProjectMeta" class="text-[11px] text-slate-400">Aggiungi un'immagine per iniziare.</div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-cubes"></i> Pezzi disponibili
+                    </span>
+                    <div id="pieceLibraryGrid" class="grid grid-cols-2 gap-2"></div>
+                    <div id="libraryColorGrid" class="grid grid-cols-6 gap-1"></div>
+                    <p class="text-[10px] text-slate-500">Scegli la forma e il colore prima di inserire o modificare un pezzo.</p>
+                </div>
+
+                <div class="space-y-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square"></i> Inserisci / Modifica / Cancella
+                    </span>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-edit-mode="insert" class="edit-mode-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 text-[11px] font-semibold">Inserisci</button>
+                        <button type="button" data-edit-mode="modify" class="edit-mode-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 text-[11px] font-semibold">Modifica</button>
+                        <button type="button" data-edit-mode="delete" class="edit-mode-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 text-[11px] font-semibold">Cancella</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" data-edit-target="piece" class="edit-target-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 text-[11px] font-semibold">Pezzo</button>
+                        <button type="button" data-edit-target="area" class="edit-target-btn px-2 py-2 rounded-lg border border-slate-700 bg-slate-800 text-[11px] font-semibold">Area</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="space-y-1">
+                            <span class="text-slate-400">Riga</span>
+                            <input id="editRowInput" type="number" min="1" value="1" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-slate-100">
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-slate-400">Colonna</span>
+                            <input id="editColInput" type="number" min="1" value="1" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-slate-100">
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-slate-400">Larghezza</span>
+                            <input id="editWidthInput" type="number" min="1" value="1" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-slate-100">
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-slate-400">Altezza</span>
+                            <input id="editHeightInput" type="number" min="1" value="1" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-slate-100">
+                        </label>
+                    </div>
+                    <label class="space-y-1 block text-xs">
+                        <span class="text-slate-400">Nome area / nota</span>
+                        <input id="editLabelInput" type="text" placeholder="Viso, occhi, sfondo..." class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-slate-100 placeholder:text-slate-500">
+                    </label>
+                    <button id="applyEditBtn" class="w-full py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/25 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>APPLICA AL PROGETTO</span>
+                    </button>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                            <i class="fa-solid fa-list"></i> Modifiche salvate
+                        </span>
+                        <button id="clearEditsBtn" class="text-[11px] text-slate-400 hover:text-slate-200">Azzera</button>
+                    </div>
+                    <div id="editList" class="space-y-2"></div>
+                </div>
+            </div>
+        </aside>
     </div>
 
     <!-- ISTRUZIONI / DISTINTA PEZZI MODAL -->
@@ -351,6 +500,30 @@
             <div id="instructionsContent" class="overflow-y-auto p-5 space-y-5 text-slate-200">
                 <!-- Filled dynamically by JS -->
             </div>
+        </div>
+    </div>
+
+    <div id="saveProjectModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+        <div class="relative w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+                <h3 class="font-heading text-lg font-bold text-slate-100">Progetto già esistente</h3>
+                <button id="closeSaveModalBtn" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">×</button>
+            </div>
+            <div class="p-5 space-y-4 text-sm text-slate-300">
+                <p id="saveModalText">Il progetto esiste già sul server. Vuoi sostituirlo o crearne una copia?</p>
+                <div class="flex gap-2">
+                    <button id="overwriteSaveBtn" class="flex-1 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold">Sovrascrivi</button>
+                    <button id="copySaveBtn" class="flex-1 px-4 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold">Crea copia</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="globalLoadingOverlay" class="hidden fixed inset-0 z-[60] items-center justify-center bg-slate-950/75 backdrop-blur-sm">
+        <div class="flex flex-col items-center gap-3 rounded-2xl border border-slate-700 bg-slate-900 px-6 py-5 shadow-2xl">
+            <div class="w-10 h-10 rounded-full border-4 border-slate-700 border-t-yellow-400 animate-spin"></div>
+            <div id="globalLoadingLabel" class="text-sm font-semibold text-slate-100">Elaborazione in corso...</div>
         </div>
     </div>
 
@@ -438,6 +611,574 @@
             // Stato dell'ultimo mosaico calcolato, usato per generare le istruzioni
             let lastBuild = null;
 
+            const defaultProjectSettings = () => ({
+                height3d: 3.5,
+                studSize: 48,
+                brightness: 0,
+                contrast: 10,
+                useOfficialPalette: true,
+                includeTransparent: false,
+                selectedSolidHexes: LEGO_PALETTE_SOLID.slice(0, 18).map(c => c.hex),
+                selectedTransparentHexes: [],
+                baseplateHex: BASEPLATE_COLORS[0].hex,
+                brickShape: 'realMixed',
+                frameWidth: 1,
+                frameHeight: 1,
+                frameZoom: 100,
+                frameOffsetX: 0,
+                frameOffsetY: 0
+            });
+
+            let projects = [];
+            let activeProjectId = null;
+            let selectedLibraryShape = { shapeType: 'square', studsX: 1, studsY: 1 };
+            let selectedLibraryHex = LEGO_PALETTE_SOLID[0].hex;
+            let selectedEditMode = 'insert';
+            let selectedEditTarget = 'piece';
+            let draggingFrame = false;
+            let activeSaveMode = 'overwrite';
+            let pendingServerSave = null;
+
+            function createProject(name) {
+                return {
+                    id: `project_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    name,
+                    imageDataUrl: null,
+                    imageName: '',
+                    imageWidth: 0,
+                    imageHeight: 0,
+                    settings: defaultProjectSettings(),
+                    manualEdits: [],
+                    lastBuild: null
+                };
+            }
+
+            function getActiveProject() {
+                return projects.find(project => project.id === activeProjectId) || null;
+            }
+
+            function setLoadingState(isLoading, label = 'Elaborazione in corso...') {
+                globalLoadingLabel.textContent = label;
+                globalLoadingOverlay.classList.toggle('hidden', !isLoading);
+                globalLoadingOverlay.classList.toggle('flex', isLoading);
+            }
+
+            function updateFramePreview() {
+                const project = getActiveProject();
+                if (!project) return;
+                const settings = project.settings;
+                const width = Math.max(1, parseInt(frameWidthInput.value, 10) || 1);
+                const height = Math.max(1, parseInt(frameHeightInput.value, 10) || 1);
+                const zoom = Math.max(80, Math.min(160, parseInt(frameZoomInput.value, 10) || 100));
+                settings.frameWidth = width;
+                settings.frameHeight = height;
+                settings.frameZoom = zoom;
+                frameZoomValue.textContent = `${zoom}%`;
+                framePreview.style.aspectRatio = `${width} / ${height}`;
+                if (!loadedImage || !project.imageDataUrl) {
+                    framePreviewImage.src = '';
+                    framePreviewImage.style.width = '0px';
+                    framePreviewImage.style.height = '0px';
+                    framePreviewEmpty.classList.remove('hidden');
+                    return;
+                }
+
+                const previewWidth = framePreview.clientWidth || 320;
+                const previewHeight = previewWidth * (height / width);
+                const coverScale = Math.max(previewWidth / loadedImage.width, previewHeight / loadedImage.height) * (zoom / 100);
+                const drawWidth = loadedImage.width * coverScale;
+                const drawHeight = loadedImage.height * coverScale;
+                const maxOffsetX = Math.max(0, (drawWidth - previewWidth) / 2);
+                const maxOffsetY = Math.max(0, (drawHeight - previewHeight) / 2);
+                const offsetX = ((settings.frameOffsetX || 0) / 100) * maxOffsetX;
+                const offsetY = ((settings.frameOffsetY || 0) / 100) * maxOffsetY;
+                framePreviewImage.src = project.imageDataUrl;
+                framePreviewImage.style.width = `${drawWidth}px`;
+                framePreviewImage.style.height = `${drawHeight}px`;
+                framePreviewImage.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
+                framePreviewEmpty.classList.toggle('hidden', !!project.imageDataUrl);
+            }
+
+            function renderImageIntoAnalysisCanvas(project, canvasSize) {
+                analysisCanvas.width = canvasSize;
+                analysisCanvas.height = canvasSize;
+                analysisCtx.clearRect(0, 0, canvasSize, canvasSize);
+
+                if (!loadedImage) return;
+
+                const width = Math.max(1, project.settings.frameWidth || 1);
+                const height = Math.max(1, project.settings.frameHeight || 1);
+                const zoom = Math.max(80, Math.min(160, project.settings.frameZoom || 100)) / 100;
+                const targetRatio = width / height;
+                const sourceRatio = loadedImage.width / loadedImage.height;
+                const baseCropWidth = sourceRatio > targetRatio ? loadedImage.height * targetRatio : loadedImage.width;
+                const baseCropHeight = sourceRatio > targetRatio ? loadedImage.height : loadedImage.width / targetRatio;
+                const cropWidth = baseCropWidth / zoom;
+                const cropHeight = baseCropHeight / zoom;
+                const maxOffsetX = Math.max(0, loadedImage.width - cropWidth);
+                const maxOffsetY = Math.max(0, loadedImage.height - cropHeight);
+                const offsetX = Math.max(-1, Math.min(1, (project.settings.frameOffsetX || 0) / 100));
+                const offsetY = Math.max(-1, Math.min(1, (project.settings.frameOffsetY || 0) / 100));
+                const cropX = Math.max(0, Math.min(maxOffsetX, (loadedImage.width - cropWidth) / 2 + offsetX * maxOffsetX / 2));
+                const cropY = Math.max(0, Math.min(maxOffsetY, (loadedImage.height - cropHeight) / 2 + offsetY * maxOffsetY / 2));
+                analysisCtx.drawImage(loadedImage, cropX, cropY, cropWidth, cropHeight, 0, 0, canvasSize, canvasSize);
+            }
+
+            function createInitialProject() {
+                const project = createProject('Progetto 1');
+                projects.push(project);
+                activeProjectId = project.id;
+                return project;
+            }
+
+            function applySettingsToControls(project) {
+                const settings = project.settings || defaultProjectSettings();
+                projectNameInput.value = project.name || 'Progetto senza nome';
+                height3dInput.value = settings.height3d;
+                height3dValue.textContent = 'Livello ' + settings.height3d;
+                studSizeInput.value = settings.studSize;
+                studSizeValue.textContent = `${settings.studSize} x ${settings.studSize}`;
+                brightnessInput.value = settings.brightness;
+                brightnessVal.textContent = settings.brightness;
+                contrastInput.value = settings.contrast;
+                contrastVal.textContent = settings.contrast;
+                useOfficialPalette.checked = settings.useOfficialPalette;
+                palettePanel.classList.toggle('hidden', !settings.useOfficialPalette);
+                includeTransparent.checked = settings.includeTransparent;
+                transColorGrid.classList.toggle('hidden', !settings.includeTransparent);
+                currentBaseplateHex = settings.baseplateHex;
+                frameWidthInput.value = settings.frameWidth || 1;
+                frameHeightInput.value = settings.frameHeight || 1;
+                frameZoomInput.value = settings.frameZoom || 100;
+                frameZoomValue.textContent = `${settings.frameZoom || 100}%`;
+                document.querySelectorAll('input[name="brickShape"]').forEach(input => {
+                    input.checked = input.value === settings.brickShape;
+                });
+
+                solidColorGrid.querySelectorAll('input').forEach(input => {
+                    const hex = parseInt(input.dataset.hex, 10);
+                    input.checked = settings.selectedSolidHexes.includes(hex);
+                    input.previousElementSibling.classList.toggle('border-yellow-400', input.checked);
+                    input.previousElementSibling.classList.toggle('border-slate-700', !input.checked);
+                });
+                transColorGrid.querySelectorAll('input').forEach(input => {
+                    const hex = parseInt(input.dataset.hex, 10);
+                    input.checked = settings.selectedTransparentHexes.includes(hex);
+                    input.previousElementSibling.classList.toggle('border-yellow-400', input.checked);
+                    input.previousElementSibling.classList.toggle('border-slate-700', !input.checked);
+                });
+
+                baseplateGrid.querySelectorAll('.baseplateBtn').forEach(btn => {
+                    const isActive = parseInt(btn.dataset.hex, 10) === currentBaseplateHex;
+                    btn.classList.toggle('border-yellow-400', isActive);
+                    btn.classList.toggle('border-slate-700', !isActive);
+                });
+
+                updatePaletteCountLabel();
+                updateFramePreview();
+                renderPieceLibrary();
+                renderEditList();
+                updateProjectSummary();
+            }
+
+            function syncControlsToProject(project) {
+                project.name = projectNameInput.value.trim() || project.name || 'Progetto senza nome';
+                project.settings.height3d = parseFloat(height3dInput.value);
+                project.settings.studSize = parseInt(studSizeInput.value, 10);
+                project.settings.brightness = parseInt(brightnessInput.value, 10);
+                project.settings.contrast = parseInt(contrastInput.value, 10);
+                project.settings.useOfficialPalette = useOfficialPalette.checked;
+                project.settings.includeTransparent = includeTransparent.checked;
+                project.settings.baseplateHex = currentBaseplateHex;
+                project.settings.brickShape = document.querySelector('input[name="brickShape"]:checked')?.value || 'realMixed';
+                project.settings.frameWidth = Math.max(1, parseInt(frameWidthInput.value, 10) || 1);
+                project.settings.frameHeight = Math.max(1, parseInt(frameHeightInput.value, 10) || 1);
+                project.settings.frameZoom = Math.max(80, Math.min(160, parseInt(frameZoomInput.value, 10) || 100));
+                project.settings.selectedSolidHexes = Array.from(solidColorGrid.querySelectorAll('input:checked')).map(input => parseInt(input.dataset.hex, 10));
+                project.settings.selectedTransparentHexes = Array.from(transColorGrid.querySelectorAll('input:checked')).map(input => parseInt(input.dataset.hex, 10));
+            }
+
+            function renderProjectTabs() {
+                projectTabsBar.innerHTML = projects.map(project => `
+                    <button type="button" data-project-id="${project.id}" class="project-tab flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold whitespace-nowrap transition ${project.id === activeProjectId ? 'active' : ''}">
+                        <i class="fa-solid fa-image"></i>
+                        <span class="max-w-32 truncate">${project.name}</span>
+                    </button>
+                `).join('') + `
+                    <button id="addProjectTabBtn" type="button" class="px-3 py-1.5 rounded-xl border border-dashed border-slate-600 bg-slate-900 text-xs font-semibold text-slate-300 whitespace-nowrap transition hover:border-yellow-400 hover:text-yellow-400">
+                        + Aggiungi immagine
+                    </button>
+                `;
+
+                projectTabsBar.querySelectorAll('.project-tab').forEach(btn => {
+                    btn.addEventListener('click', () => activateProject(btn.dataset.projectId));
+                });
+
+                document.getElementById('addProjectTabBtn')?.addEventListener('click', () => {
+                    const project = createProject(`Progetto ${projects.length + 1}`);
+                    projects.push(project);
+                    activateProject(project.id);
+                    imageInput.click();
+                });
+            }
+
+            function updateProjectSummary() {
+                const project = getActiveProject();
+                if (!project) return;
+                projectNameInput.value = project.name || project.imageName || 'Progetto senza nome';
+                activeProjectMeta.textContent = project.imageDataUrl
+                    ? `${project.imageWidth} x ${project.imageHeight} px · ${project.manualEdits.length} modifiche`
+                    : 'Aggiungi un'immagine per iniziare.';
+            }
+
+            function renderPieceLibrary() {
+                const project = getActiveProject();
+                const settings = project?.settings || defaultProjectSettings();
+                const palette = settings.useOfficialPalette
+                    ? LEGO_PALETTE_SOLID.filter(color => settings.selectedSolidHexes.includes(color.hex))
+                    : LEGO_PALETTE_SOLID.slice(0, 8);
+                const colorOptions = palette.length ? palette : LEGO_PALETTE_SOLID.slice(0, 6);
+                if (!colorOptions.some(color => color.hex === selectedLibraryHex)) {
+                    selectedLibraryHex = colorOptions[0].hex;
+                }
+
+                pieceLibraryGrid.innerHTML = `
+                    <button type="button" data-shape="square" data-width="1" data-height="1" class="piece-option flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 p-2 text-left ${selectedLibraryShape.shapeType === 'square' && selectedLibraryShape.studsX === 1 && selectedLibraryShape.studsY === 1 ? 'active' : ''}">
+                        <i class="fa-solid fa-square text-slate-200"></i>
+                        <div>
+                            <div class="text-xs font-bold text-slate-100">Quadrato 1x1</div>
+                            <div class="text-[10px] text-slate-400">Pezzo base</div>
+                        </div>
+                    </button>
+                    <button type="button" data-shape="square" data-width="2" data-height="1" class="piece-option flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 p-2 text-left ${selectedLibraryShape.shapeType === 'square' && selectedLibraryShape.studsX === 2 && selectedLibraryShape.studsY === 1 ? 'active' : ''}">
+                        <i class="fa-solid fa-grip-vertical text-slate-200"></i>
+                        <div>
+                            <div class="text-xs font-bold text-slate-100">Rettangolo 1x2</div>
+                            <div class="text-[10px] text-slate-400">Per aree strette</div>
+                        </div>
+                    </button>
+                    <button type="button" data-shape="square" data-width="2" data-height="2" class="piece-option flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 p-2 text-left ${selectedLibraryShape.shapeType === 'square' && selectedLibraryShape.studsX === 2 && selectedLibraryShape.studsY === 2 ? 'active' : ''}">
+                        <i class="fa-solid fa-border-all text-slate-200"></i>
+                        <div>
+                            <div class="text-xs font-bold text-slate-100">Quadrato 2x2</div>
+                            <div class="text-[10px] text-slate-400">Copertura veloce</div>
+                        </div>
+                    </button>
+                    <button type="button" data-shape="round" data-width="1" data-height="1" class="piece-option flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 p-2 text-left ${selectedLibraryShape.shapeType === 'round' ? 'active' : ''}">
+                        <i class="fa-solid fa-circle text-slate-200"></i>
+                        <div>
+                            <div class="text-xs font-bold text-slate-100">Tondo 1x1</div>
+                            <div class="text-[10px] text-slate-400">Dettagli / viso</div>
+                        </div>
+                    </button>
+                `;
+
+                pieceLibraryGrid.querySelectorAll('.piece-option').forEach(button => {
+                    button.addEventListener('click', () => {
+                        selectedLibraryShape = {
+                            shapeType: button.dataset.shape,
+                            studsX: parseInt(button.dataset.width, 10),
+                            studsY: parseInt(button.dataset.height, 10)
+                        };
+                        renderPieceLibrary();
+                    });
+                });
+
+                libraryColorGrid.innerHTML = colorOptions.map(color => `
+                    <button type="button" data-color="${color.hex}" title="${color.name}" class="w-6 h-6 rounded-md border-2 ${color.hex === selectedLibraryHex ? 'border-yellow-400' : 'border-slate-700'}" style="background:#${color.hex.toString(16).padStart(6, '0')}"></button>
+                `).join('');
+
+                libraryColorGrid.querySelectorAll('button').forEach(button => {
+                    button.addEventListener('click', () => {
+                        selectedLibraryHex = parseInt(button.dataset.color, 10);
+                        renderPieceLibrary();
+                    });
+                });
+            }
+
+            function renderEditList() {
+                const project = getActiveProject();
+                if (!project) return;
+                if (!project.manualEdits.length) {
+                    editList.innerHTML = '<div class="text-[11px] text-slate-500 border border-dashed border-slate-700 rounded-xl p-3">Nessuna modifica manuale salvata per questo tab.</div>';
+                    return;
+                }
+
+                editList.innerHTML = project.manualEdits.map((edit, index) => {
+                    const kindLabel = `${edit.mode === 'insert' ? 'Inserisci' : edit.mode === 'modify' ? 'Modifica' : 'Cancella'} ${edit.target === 'area' ? 'area' : 'pezzo'}`;
+                    const areaLabel = edit.target === 'area' ? ` · area ${edit.width}x${edit.height}` : '';
+                    return `
+                        <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <div class="text-xs font-bold text-slate-100">${kindLabel}${areaLabel}</div>
+                                    <div class="text-[10px] text-slate-400">R${edit.row} C${edit.col}${edit.label ? ' · ' + edit.label : ''}</div>
+                                </div>
+                                <button type="button" data-remove-edit="${edit.id}" class="text-[11px] text-red-300 hover:text-red-200">Rimuovi</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                editList.querySelectorAll('[data-remove-edit]').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const project = getActiveProject();
+                        project.manualEdits = project.manualEdits.filter(edit => edit.id !== button.dataset.removeEdit);
+                        renderEditList();
+                        build3dLegoMosaic();
+                    });
+                });
+            }
+
+            function activateProject(projectId) {
+                const currentProject = getActiveProject();
+                if (currentProject) syncControlsToProject(currentProject);
+                activeProjectId = projectId;
+                const project = getActiveProject();
+                if (!project) return;
+                applySettingsToControls(project);
+                renderProjectTabs();
+                updateProjectSummary();
+                if (project.imageDataUrl) {
+                    const img = new Image();
+                    img.onload = () => {
+                        loadedImage = img;
+                        sourceThumbnail.src = project.imageDataUrl;
+                        sourceFileName.textContent = project.imageName || project.name;
+                        sourceDimensions.textContent = `${project.imageWidth} x ${project.imageHeight} px`;
+                        loadedImgInfo.classList.remove('hidden');
+                        transformBtn.disabled = false;
+                        export3dBtn.disabled = false;
+                        emptyState.classList.add('hidden');
+                        build3dLegoMosaic();
+                    };
+                    img.src = project.imageDataUrl;
+                } else {
+                    loadedImage = null;
+                    loadedImgInfo.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    transformBtn.disabled = true;
+                    export3dBtn.disabled = true;
+                    renderEditList();
+                }
+            }
+
+            function ensureProjectExists() {
+                if (!projects.length) {
+                    createInitialProject();
+                }
+            }
+
+            function createEditFromForm() {
+                return {
+                    id: `edit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    mode: selectedEditMode,
+                    target: selectedEditTarget,
+                    row: Math.max(1, parseInt(editRowInput.value, 10) || 1) - 1,
+                    col: Math.max(1, parseInt(editColInput.value, 10) || 1) - 1,
+                    width: Math.max(1, parseInt(editWidthInput.value, 10) || 1),
+                    height: Math.max(1, parseInt(editHeightInput.value, 10) || 1),
+                    label: editLabelInput.value.trim(),
+                    shapeType: selectedLibraryShape.shapeType,
+                    studsX: selectedLibraryShape.studsX,
+                    studsY: selectedLibraryShape.studsY,
+                    hex: selectedLibraryHex,
+                    plates: 1,
+                    transparent: LEGO_PALETTE_TRANS.some(color => color.hex === selectedLibraryHex)
+                };
+            }
+
+            function saveCurrentSettings() {
+                const project = getActiveProject();
+                if (!project) return;
+                syncControlsToProject(project);
+                updateProjectSummary();
+            }
+
+            function buildProjectPayload(project) {
+                return {
+                    id: project.id,
+                    name: project.name,
+                    imageName: project.imageName,
+                    imageWidth: project.imageWidth,
+                    imageHeight: project.imageHeight,
+                    imageDataUrl: project.imageDataUrl,
+                    settings: project.settings,
+                    manualEdits: project.manualEdits,
+                    lastBuild: project.lastBuild ? {
+                        gridSize: project.lastBuild.gridSize,
+                        totalPhysicalPieces: project.lastBuild.totalPhysicalPieces,
+                        totalBricks: project.lastBuild.totalBricks,
+                        totalStuds: project.lastBuild.totalStuds,
+                        realWidthCm: project.lastBuild.realWidthCm,
+                        realDepthCm: project.lastBuild.realDepthCm
+                    } : null
+                };
+            }
+
+            async function postProjectSave(action, project, saveMode = 'overwrite') {
+                const response = await fetch('save_project.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action,
+                        saveMode,
+                        project: buildProjectPayload(project)
+                    })
+                });
+                return await response.json();
+            }
+
+            async function requestProjectSave() {
+                const project = getActiveProject();
+                if (!project) return;
+                saveCurrentSettings();
+                setLoadingState(true, 'Controllo salvataggio progetto...');
+                try {
+                    const result = await postProjectSave('check', project, 'overwrite');
+                    if (result.exists) {
+                        pendingServerSave = project;
+                        saveModalText.textContent = `Il progetto "${project.name}" esiste già sul server. Vuoi sovrascriverlo o creare una copia?`;
+                        saveProjectModal.classList.remove('hidden');
+                        return;
+                    }
+                    await confirmServerSave('overwrite');
+                } catch (error) {
+                    console.error(error);
+                    alert('Impossibile contattare il server per il salvataggio.');
+                } finally {
+                    setLoadingState(false);
+                }
+            }
+
+            async function confirmServerSave(saveMode) {
+                const project = pendingServerSave || getActiveProject();
+                if (!project) return;
+                pendingServerSave = null;
+                saveProjectModal.classList.add('hidden');
+                setLoadingState(true, saveMode === 'copy' ? 'Creo una copia del progetto...' : 'Salvo il progetto sul server...');
+                try {
+                    const result = await postProjectSave('save', project, saveMode);
+                    if (!result.success) {
+                        alert(result.message || 'Salvataggio non riuscito.');
+                        return;
+                    }
+                    if (result.savedName) {
+                        project.name = result.savedName;
+                        projectNameInput.value = project.name;
+                        renderProjectTabs();
+                    }
+                    updateProjectSummary();
+                    renderProjectTabs();
+                } catch (error) {
+                    console.error(error);
+                    alert('Errore durante il salvataggio sul server.');
+                } finally {
+                    setLoadingState(false);
+                }
+            }
+
+            function buildEditBounds(edit) {
+                return {
+                    row: edit.row,
+                    col: edit.col,
+                    width: edit.target === 'piece' ? edit.studsX : edit.width,
+                    height: edit.target === 'piece' ? edit.studsY : edit.height
+                };
+            }
+
+            function overlap(a, b) {
+                return a.col < b.col + b.width && a.col + a.width > b.col && a.row < b.row + b.height && a.row + a.height > b.row;
+            }
+
+            function clonePiece(piece) {
+                return { ...piece };
+            }
+
+            function createManualPieceFromEdit(edit, row, col, width, height) {
+                return {
+                    row,
+                    col,
+                    studsX: width,
+                    studsY: height,
+                    shapeType: edit.shapeType,
+                    hex: edit.hex,
+                    plates: edit.plates,
+                    transparent: !!edit.transparent
+                };
+            }
+
+            function applyManualEdits(basePieces, project) {
+                const pieces = basePieces.map(clonePiece);
+                project.manualEdits.forEach(edit => {
+                    const bounds = buildEditBounds(edit);
+                    const isArea = edit.target === 'area';
+
+                    if (edit.mode === 'delete') {
+                        for (let index = pieces.length - 1; index >= 0; index--) {
+                            const piece = pieces[index];
+                            const pieceBounds = { row: piece.row, col: piece.col, width: piece.studsX, height: piece.studsY };
+                            const match = isArea ? overlap(pieceBounds, bounds) : (piece.row === edit.row && piece.col === edit.col);
+                            if (match) pieces.splice(index, 1);
+                        }
+                        return;
+                    }
+
+                    if (edit.mode === 'modify') {
+                        pieces.forEach(piece => {
+                            const pieceBounds = { row: piece.row, col: piece.col, width: piece.studsX, height: piece.studsY };
+                            const match = isArea ? overlap(pieceBounds, bounds) : (piece.row === edit.row && piece.col === edit.col);
+                            if (!match) return;
+                            piece.hex = edit.hex;
+                            piece.transparent = !!edit.transparent;
+                            piece.plates = Math.max(1, edit.plates || piece.plates);
+                            if (!isArea) {
+                                piece.shapeType = edit.shapeType;
+                                piece.studsX = edit.studsX;
+                                piece.studsY = edit.studsY;
+                            }
+                        });
+                        return;
+                    }
+
+                    if (edit.mode === 'insert') {
+                        for (let index = pieces.length - 1; index >= 0; index--) {
+                            const piece = pieces[index];
+                            const pieceBounds = { row: piece.row, col: piece.col, width: piece.studsX, height: piece.studsY };
+                            const match = isArea ? overlap(pieceBounds, bounds) : (piece.row === edit.row && piece.col === edit.col);
+                            if (match) pieces.splice(index, 1);
+                        }
+
+                        const width = isArea ? edit.width : edit.studsX;
+                        const height = isArea ? edit.height : edit.studsY;
+                        const tileWidth = Math.max(1, edit.studsX);
+                        const tileHeight = Math.max(1, edit.studsY);
+
+                        for (let row = edit.row; row < edit.row + height; row += tileHeight) {
+                            for (let col = edit.col; col < edit.col + width; col += tileWidth) {
+                                const remainWidth = Math.min(tileWidth, edit.col + width - col);
+                                const remainHeight = Math.min(tileHeight, edit.row + height - row);
+                                pieces.push(createManualPieceFromEdit(edit, row, col, remainWidth, remainHeight));
+                            }
+                        }
+                    }
+                });
+                return pieces;
+            }
+
+            function summarizePieces(pieces) {
+                const groups = new Map();
+                pieces.forEach(piece => {
+                    const label = shapeLabel(piece.shapeType, piece.studsX, piece.studsY);
+                    const key = `${label}|${piece.hex}|${piece.plates}|${piece.transparent ? 1 : 0}`;
+                    if (!groups.has(key)) {
+                        groups.set(key, { label, hex: piece.hex, plates: piece.plates, transparent: !!piece.transparent, quantity: 0 });
+                    }
+                    groups.get(key).quantity += 1;
+                });
+                return Array.from(groups.values()).sort((a, b) => (b.quantity * b.plates) - (a.quantity * a.plates));
+            }
+
             function shapeLabel(shapeType, studsX, studsY) {
                 if (shapeType === 'round') return 'Tondo 1x1';
                 if (studsX === 2 && studsY === 2) return 'Quadrato 2x2';
@@ -470,13 +1211,20 @@
             function recomputeActivePalette() {
                 activePaletteColors = LEGO_PALETTE_SOLID.filter(c => document.getElementById('solid_' + c.hex)?.checked);
                 if (activePaletteColors.length === 0) activePaletteColors = LEGO_PALETTE_SOLID.slice(0, 6); // sicurezza: mai palette vuota
+                const project = getActiveProject();
+                if (project) {
+                    project.settings.selectedSolidHexes = activePaletteColors.map(color => color.hex);
+                }
                 updatePaletteCountLabel();
                 autoTransformDebounced();
             }
 
             function initColorAndBaseplateUI() {
+                const project = getActiveProject() || createInitialProject();
+                const settings = project.settings || defaultProjectSettings();
+
                 // Griglia colori solidi
-                solidColorGrid.innerHTML = LEGO_PALETTE_SOLID.map((c, i) => swatchHtml('solid', c, i < 18)).join('');
+                solidColorGrid.innerHTML = LEGO_PALETTE_SOLID.map((c) => swatchHtml('solid', c, settings.selectedSolidHexes.includes(c.hex))).join('');
                 solidColorGrid.querySelectorAll('input').forEach(inp => {
                     inp.addEventListener('change', () => {
                         inp.previousElementSibling.classList.toggle('border-yellow-400', inp.checked);
@@ -487,16 +1235,22 @@
                 updatePaletteCountLabel();
 
                 // Griglia colori trasparenti
-                transColorGrid.innerHTML = LEGO_PALETTE_TRANS.map(c => swatchHtml('trans', c, false)).join('');
+                transColorGrid.innerHTML = LEGO_PALETTE_TRANS.map(c => swatchHtml('trans', c, settings.selectedTransparentHexes.includes(c.hex))).join('');
                 transColorGrid.querySelectorAll('input').forEach(inp => {
                     inp.addEventListener('change', () => {
                         inp.previousElementSibling.classList.toggle('border-yellow-400', inp.checked);
                         inp.previousElementSibling.classList.toggle('border-slate-700', !inp.checked);
+                        const activeProject = getActiveProject();
+                        if (activeProject) {
+                            activeProject.settings.selectedTransparentHexes = Array.from(transColorGrid.querySelectorAll('input:checked')).map(input => parseInt(input.dataset.hex, 10));
+                        }
                         autoTransformDebounced();
                     });
                 });
                 includeTransparent.addEventListener('change', () => {
                     transColorGrid.classList.toggle('hidden', !includeTransparent.checked);
+                    const activeProject = getActiveProject();
+                    if (activeProject) activeProject.settings.includeTransparent = includeTransparent.checked;
                     autoTransformDebounced();
                 });
 
@@ -527,6 +1281,8 @@
                 baseplateGrid.querySelectorAll('.baseplateBtn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         currentBaseplateHex = parseInt(btn.dataset.hex, 10);
+                        const activeProject = getActiveProject();
+                        if (activeProject) activeProject.settings.baseplateHex = currentBaseplateHex;
                         baseplateGrid.querySelectorAll('.baseplateBtn').forEach(b => {
                             b.classList.toggle('border-yellow-400', b === btn);
                             b.classList.toggle('border-slate-700', b !== btn);
@@ -547,6 +1303,27 @@
             const sourceThumbnail = document.getElementById('sourceThumbnail');
             const sourceFileName = document.getElementById('sourceFileName');
             const sourceDimensions = document.getElementById('sourceDimensions');
+            const projectTabsBar = document.getElementById('projectTabsBar');
+            const activeProjectMeta = document.getElementById('activeProjectMeta');
+            const projectNameInput = document.getElementById('projectNameInput');
+            const newProjectBtn = document.getElementById('newProjectBtn');
+            const frameWidthInput = document.getElementById('frameWidthInput');
+            const frameHeightInput = document.getElementById('frameHeightInput');
+            const frameZoomInput = document.getElementById('frameZoomInput');
+            const frameZoomValue = document.getElementById('frameZoomValue');
+            const framePreview = document.getElementById('framePreview');
+            const framePreviewImage = document.getElementById('framePreviewImage');
+            const framePreviewEmpty = document.getElementById('framePreviewEmpty');
+            const pieceLibraryGrid = document.getElementById('pieceLibraryGrid');
+            const libraryColorGrid = document.getElementById('libraryColorGrid');
+            const editRowInput = document.getElementById('editRowInput');
+            const editColInput = document.getElementById('editColInput');
+            const editWidthInput = document.getElementById('editWidthInput');
+            const editHeightInput = document.getElementById('editHeightInput');
+            const editLabelInput = document.getElementById('editLabelInput');
+            const applyEditBtn = document.getElementById('applyEditBtn');
+            const clearEditsBtn = document.getElementById('clearEditsBtn');
+            const editList = document.getElementById('editList');
 
             const height3dInput = document.getElementById('height3d');
             const height3dValue = document.getElementById('height3dValue');
@@ -593,6 +1370,14 @@
             const count1x1 = document.getElementById('count1x1');
             const count1x2 = document.getElementById('count1x2');
             const count2x2 = document.getElementById('count2x2');
+            const saveProjectBtn = document.getElementById('saveProjectBtn');
+            const saveProjectModal = document.getElementById('saveProjectModal');
+            const closeSaveModalBtn = document.getElementById('closeSaveModalBtn');
+            const overwriteSaveBtn = document.getElementById('overwriteSaveBtn');
+            const copySaveBtn = document.getElementById('copySaveBtn');
+            const saveModalText = document.getElementById('saveModalText');
+            const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
+            const globalLoadingLabel = document.getElementById('globalLoadingLabel');
 
             // THREE.JS Scene state
             let loadedImage = null;
@@ -650,39 +1435,171 @@
                 camera.aspect = webglContainer.clientWidth / webglContainer.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(webglContainer.clientWidth, webglContainer.clientHeight);
+                updateFramePreview();
             }
 
+            createInitialProject();
+            renderProjectTabs();
             initColorAndBaseplateUI();
             initThree();
+            applySettingsToControls(getActiveProject());
+            updateProjectSummary();
 
             height3dInput.addEventListener('input', (e) => {
                 height3dValue.textContent = 'Livello ' + e.target.value;
+                saveCurrentSettings();
                 autoTransformDebounced();
             });
 
             studSizeInput.addEventListener('input', (e) => {
                 studSizeValue.textContent = `${e.target.value} x ${e.target.value}`;
+                saveCurrentSettings();
                 autoTransformDebounced();
             });
 
             brightnessInput.addEventListener('input', (e) => {
                 brightnessVal.textContent = e.target.value;
+                saveCurrentSettings();
                 autoTransformDebounced();
             });
 
             contrastInput.addEventListener('input', (e) => {
                 contrastVal.textContent = e.target.value;
+                saveCurrentSettings();
                 autoTransformDebounced();
             });
 
             useOfficialPalette.addEventListener('change', () => {
                 palettePanel.classList.toggle('hidden', !useOfficialPalette.checked);
+                saveCurrentSettings();
                 autoTransformDebounced();
             });
-            document.querySelectorAll('input[name="brickShape"]').forEach(r => r.addEventListener('change', () => autoTransformDebounced()));
+            document.querySelectorAll('input[name="brickShape"]').forEach(r => r.addEventListener('change', () => {
+                saveCurrentSettings();
+                autoTransformDebounced();
+            }));
+
+            projectNameInput.addEventListener('input', () => {
+                saveCurrentSettings();
+                renderProjectTabs();
+            });
+
+            frameWidthInput.addEventListener('input', () => {
+                saveCurrentSettings();
+                updateFramePreview();
+                autoTransformDebounced();
+            });
+
+            frameHeightInput.addEventListener('input', () => {
+                saveCurrentSettings();
+                updateFramePreview();
+                autoTransformDebounced();
+            });
+
+            frameZoomInput.addEventListener('input', () => {
+                saveCurrentSettings();
+                updateFramePreview();
+                autoTransformDebounced();
+            });
+
+            framePreview.addEventListener('pointerdown', (event) => {
+                if (!loadedImage) return;
+                draggingFrame = true;
+                framePreview.setPointerCapture(event.pointerId);
+                framePreview.dataset.dragStartX = String(event.clientX);
+                framePreview.dataset.dragStartY = String(event.clientY);
+                framePreview.dataset.startOffsetX = String(getActiveProject()?.settings.frameOffsetX || 0);
+                framePreview.dataset.startOffsetY = String(getActiveProject()?.settings.frameOffsetY || 0);
+                framePreview.classList.remove('cursor-grab');
+                framePreview.classList.add('cursor-grabbing');
+            });
+
+            framePreview.addEventListener('pointermove', (event) => {
+                if (!draggingFrame || !loadedImage) return;
+                const project = getActiveProject();
+                if (!project) return;
+                const deltaX = event.clientX - parseFloat(framePreview.dataset.dragStartX || '0');
+                const deltaY = event.clientY - parseFloat(framePreview.dataset.dragStartY || '0');
+                const previewWidth = framePreview.clientWidth || 320;
+                const previewHeight = framePreview.clientHeight || 320;
+                const width = Math.max(1, project.settings.frameWidth || 1);
+                const height = Math.max(1, project.settings.frameHeight || 1);
+                const zoom = Math.max(80, Math.min(160, project.settings.frameZoom || 100));
+                const coverScale = Math.max(previewWidth / loadedImage.width, previewHeight / loadedImage.height) * (zoom / 100);
+                const drawWidth = loadedImage.width * coverScale;
+                const drawHeight = loadedImage.height * coverScale;
+                const maxOffsetX = Math.max(1, (drawWidth - previewWidth) / 2);
+                const maxOffsetY = Math.max(1, (drawHeight - previewHeight) / 2);
+                project.settings.frameOffsetX = Math.max(-100, Math.min(100, parseFloat(framePreview.dataset.startOffsetX || '0') + (deltaX / maxOffsetX) * 100));
+                project.settings.frameOffsetY = Math.max(-100, Math.min(100, parseFloat(framePreview.dataset.startOffsetY || '0') + (deltaY / maxOffsetY) * 100));
+                updateFramePreview();
+                autoTransformDebounced();
+            });
+
+            framePreview.addEventListener('pointerup', () => {
+                draggingFrame = false;
+                framePreview.classList.remove('cursor-grabbing');
+                framePreview.classList.add('cursor-grab');
+            });
+
+            framePreview.addEventListener('pointercancel', () => {
+                draggingFrame = false;
+                framePreview.classList.remove('cursor-grabbing');
+                framePreview.classList.add('cursor-grab');
+            });
+
+            newProjectBtn.addEventListener('click', () => {
+                const project = createProject(`Progetto ${projects.length + 1}`);
+                projects.push(project);
+                activateProject(project.id);
+            });
+
+            applyEditBtn.addEventListener('click', () => {
+                const project = getActiveProject();
+                if (!project) return;
+                project.manualEdits.push(createEditFromForm());
+                renderEditList();
+                build3dLegoMosaic();
+            });
+
+            clearEditsBtn.addEventListener('click', () => {
+                const project = getActiveProject();
+                if (!project) return;
+                project.manualEdits = [];
+                renderEditList();
+                build3dLegoMosaic();
+            });
+
+            saveProjectBtn.addEventListener('click', () => {
+                requestProjectSave();
+            });
+
+            closeSaveModalBtn.addEventListener('click', () => saveProjectModal.classList.add('hidden'));
+            saveProjectModal.addEventListener('click', (event) => {
+                if (event.target === saveProjectModal.firstElementChild) {
+                    saveProjectModal.classList.add('hidden');
+                }
+            });
+            overwriteSaveBtn.addEventListener('click', () => confirmServerSave('overwrite'));
+            copySaveBtn.addEventListener('click', () => confirmServerSave('copy'));
+
+            document.querySelectorAll('[data-edit-mode]').forEach(button => {
+                button.addEventListener('click', () => {
+                    selectedEditMode = button.dataset.editMode;
+                    document.querySelectorAll('[data-edit-mode]').forEach(btn => btn.classList.toggle('active', btn === button));
+                });
+            });
+
+            document.querySelectorAll('[data-edit-target]').forEach(button => {
+                button.addEventListener('click', () => {
+                    selectedEditTarget = button.dataset.editTarget;
+                    document.querySelectorAll('[data-edit-target]').forEach(btn => btn.classList.toggle('active', btn === button));
+                });
+            });
 
             let debounceTimer = null;
             function autoTransformDebounced() {
+                saveCurrentSettings();
                 if (!loadedImage) return;
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => build3dLegoMosaic(), 100);
@@ -707,6 +1624,17 @@
                 reader.onload = (e) => {
                     const img = new Image();
                     img.onload = () => {
+                        const project = getActiveProject() || createInitialProject();
+                        if (!project.name || project.name === 'Progetto 1') {
+                            const baseName = file.name.replace(/\.[^.]+$/, '');
+                            project.name = baseName || project.name;
+                        }
+                        project.imageDataUrl = e.target.result;
+                        project.imageName = file.name;
+                        project.imageWidth = img.width;
+                        project.imageHeight = img.height;
+                        project.settings.frameOffsetX = 0;
+                        project.settings.frameOffsetY = 0;
                         loadedImage = img;
                         sourceThumbnail.src = e.target.result;
                         sourceFileName.textContent = file.name;
@@ -715,6 +1643,9 @@
                         transformBtn.disabled = false;
                         export3dBtn.disabled = false;
                         emptyState.classList.add('hidden');
+                        updateProjectSummary();
+                        renderProjectTabs();
+                        updateFramePreview();
                         build3dLegoMosaic();
                     };
                     img.src = e.target.result;
@@ -724,15 +1655,25 @@
 
             transformBtn.addEventListener('click', () => build3dLegoMosaic());
 
+            const activeProject = getActiveProject();
+            if (activeProject) {
+                renderProjectTabs();
+                applySettingsToControls(activeProject);
+                renderEditList();
+            }
+
             resetCamBtn.addEventListener('click', () => {
                 camera.position.set(0, -50, 60);
                 controls.target.set(0, 0, 0);
             });
 
             function getActiveColorSet() {
-                const includeTrans = document.getElementById('includeTransparent')?.checked;
-                const list = includeTrans ? activePaletteColors.concat(LEGO_PALETTE_TRANS.filter(c => document.getElementById('trans_' + c.hex)?.checked)) : activePaletteColors;
-                return list.length ? list : LEGO_PALETTE_SOLID;
+                const project = getActiveProject();
+                if (!project) return LEGO_PALETTE_SOLID;
+                const solid = LEGO_PALETTE_SOLID.filter(color => project.settings.selectedSolidHexes.includes(color.hex));
+                const trans = LEGO_PALETTE_TRANS.filter(color => project.settings.selectedTransparentHexes.includes(color.hex));
+                const list = project.settings.includeTransparent ? solid.concat(trans) : solid;
+                return list.length ? list : LEGO_PALETTE_SOLID.slice(0, 6);
             }
 
             function getClosestColor(r, g, b) {
@@ -750,176 +1691,190 @@
                 return closest;
             }
 
-            function build3dLegoMosaic() {
-                if (!loadedImage) return;
+            async function build3dLegoMosaic() {
+                const project = getActiveProject();
+                if (!project || !loadedImage) return;
 
-                const gridSize = parseInt(studSizeInput.value, 10);
-                const maxExtrusion = parseFloat(height3dInput.value);
-                const shapeMode = document.querySelector('input[name="brickShape"]:checked').value;
-                const usePalette = useOfficialPalette.checked;
+                syncControlsToProject(project);
+                setLoadingState(true, 'Ricreo il mosaico 3D...');
+                await new Promise(requestAnimationFrame);
+                try {
+                    const gridSize = project.settings.studSize;
+                    const maxExtrusion = project.settings.height3d;
+                    const shapeMode = project.settings.brickShape;
+                    const usePalette = project.settings.useOfficialPalette;
 
-                const bVal = parseInt(brightnessInput.value, 10);
-                const cVal = parseInt(contrastInput.value, 10);
-                const factor = (259 * (cVal + 255)) / (255 * (259 - cVal));
+                    const bVal = project.settings.brightness;
+                    const cVal = project.settings.contrast;
+                    const factor = (259 * (cVal + 255)) / (255 * (259 - cVal));
 
-                // Process image in 2D canvas
-                analysisCanvas.width = gridSize;
-                analysisCanvas.height = gridSize;
-                analysisCtx.drawImage(loadedImage, 0, 0, gridSize, gridSize);
+                    renderImageIntoAnalysisCanvas(project, gridSize);
 
-                const imgData = analysisCtx.getImageData(0, 0, gridSize, gridSize).data;
-                const grid = [];
+                    const imgData = analysisCtx.getImageData(0, 0, gridSize, gridSize).data;
+                    const grid = [];
 
-                for (let r = 0; r < gridSize; r++) {
-                    grid[r] = [];
-                    for (let c = 0; c < gridSize; c++) {
-                        const idx = (r * gridSize + c) * 4;
-                        let red = imgData[idx];
-                        let green = imgData[idx + 1];
-                        let blue = imgData[idx + 2];
+                    for (let r = 0; r < gridSize; r++) {
+                        grid[r] = [];
+                        for (let c = 0; c < gridSize; c++) {
+                            const idx = (r * gridSize + c) * 4;
+                            let red = imgData[idx];
+                            let green = imgData[idx + 1];
+                            let blue = imgData[idx + 2];
 
-                        // Brightness / Contrast
-                        red = Math.min(255, Math.max(0, factor * (red + bVal - 128) + 128));
-                        green = Math.min(255, Math.max(0, factor * (green + bVal - 128) + 128));
-                        blue = Math.min(255, Math.max(0, factor * (blue + bVal - 128) + 128));
+                            red = Math.min(255, Math.max(0, factor * (red + bVal - 128) + 128));
+                            green = Math.min(255, Math.max(0, factor * (green + bVal - 128) + 128));
+                            blue = Math.min(255, Math.max(0, factor * (blue + bVal - 128) + 128));
 
-                        // Brightness metric for 3D extrusion height (> 1 layer)
-                        const luminance = (red * 0.299 + green * 0.587 + blue * 0.114) / 255;
-                        const heightLayers = 1 + (luminance * maxExtrusion);
-                        // Numero INTERO di plate reali da impilare (ogni plate = un pezzo fisico acquistabile)
-                        const plateCount = Math.max(1, Math.round(heightLayers));
+                            const luminance = (red * 0.299 + green * 0.587 + blue * 0.114) / 255;
+                            const heightLayers = 1 + (luminance * maxExtrusion);
+                            const plateCount = Math.max(1, Math.round(heightLayers));
 
-                        let hexColor = (Math.round(red) << 16) + (Math.round(green) << 8) + Math.round(blue);
-                        let rgbArray = [red, green, blue];
-                        let isTransCell = false;
+                            let hexColor = (Math.round(red) << 16) + (Math.round(green) << 8) + Math.round(blue);
+                            let rgbArray = [red, green, blue];
+                            let isTransCell = false;
 
-                        if (usePalette) {
-                            const matched = getClosestColor(red, green, blue);
-                            hexColor = matched.hex;
-                            rgbArray = matched.rgb;
-                            isTransCell = !!matched.transparent;
+                            if (usePalette) {
+                                const matched = getClosestColor(red, green, blue);
+                                hexColor = matched.hex;
+                                rgbArray = matched.rgb;
+                                isTransCell = !!matched.transparent;
+                            }
+
+                            grid[r][c] = {
+                                hex: hexColor,
+                                rgb: rgbArray,
+                                luminance: luminance,
+                                height: heightLayers,
+                                plates: plateCount,
+                                transparent: isTransCell
+                            };
                         }
-
-                        grid[r][c] = {
-                            hex: hexColor,
-                            rgb: rgbArray,
-                            luminance: luminance,
-                            height: heightLayers,
-                            plates: plateCount,
-                            transparent: isTransCell
-                        };
                     }
-                }
 
-                // Clear previous 3D mesh
-                while (legoGroup.children.length > 0) {
-                    const obj = legoGroup.children[0];
-                    if (obj.geometry) obj.geometry.dispose();
-                    legoGroup.remove(obj);
-                }
+                    while (legoGroup.children.length > 0) {
+                        const obj = legoGroup.children[0];
+                        if (obj.geometry) obj.geometry.dispose();
+                        legoGroup.remove(obj);
+                    }
 
-                const studPitch = 1.2;
-                const basePlateWidth = gridSize * studPitch;
-                
-                // Draw Baseplate
-                const baseGeo = new THREE.BoxGeometry(basePlateWidth + 0.8, basePlateWidth + 0.8, 0.8);
-                const baseMat = new THREE.MeshStandardMaterial({ color: currentBaseplateHex, roughness: 0.5 });
-                const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-                baseMesh.position.set(0, 0, -0.4);
-                baseMesh.receiveShadow = true;
-                legoGroup.add(baseMesh);
+                    const studPitch = 1.2;
+                    const basePlateWidth = gridSize * studPitch;
+                    const baseGeo = new THREE.BoxGeometry(basePlateWidth + 0.8, basePlateWidth + 0.8, 0.8);
+                    const baseMat = new THREE.MeshStandardMaterial({ color: project.settings.baseplateHex, roughness: 0.5 });
+                    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+                    baseMesh.userData.isBaseplate = true;
+                    baseMesh.position.set(0, 0, -0.4);
+                    baseMesh.receiveShadow = true;
+                    legoGroup.add(baseMesh);
 
-                // Brick Counters
-                let cRound = 0, c11 = 0, c12 = 0, c22 = 0;
-                const used = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
-                const placedPieces = [];
-                let maxPlates = 1;
+                    let cRound = 0, c11 = 0, c12 = 0, c22 = 0;
+                    const used = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
+                    const placedPieces = [];
+                    let maxPlates = 1;
 
-                for (let r = 0; r < gridSize; r++) {
-                    for (let c = 0; c < gridSize; c++) {
-                        if (used[r][c]) continue;
+                    for (let r = 0; r < gridSize; r++) {
+                        for (let c = 0; c < gridSize; c++) {
+                            if (used[r][c]) continue;
 
-                        const cell = grid[r][c];
-                        maxPlates = Math.max(maxPlates, cell.plates);
+                            const cell = grid[r][c];
+                            maxPlates = Math.max(maxPlates, cell.plates);
 
-                        // SHAPE MODE: 'realMixed' -> Mix of Round tiles and Square/Rectangular bricks
-                        if (shapeMode === 'realMixed') {
-                            // High luminance/detail points or checker pattern -> Round tile 1x1
-                            if ((r + c) % 5 === 0 || cell.luminance > 0.8) {
+                            if (shapeMode === 'realMixed') {
+                                if ((r + c) % 5 === 0 || cell.luminance > 0.8) {
+                                    used[r][c] = true;
+                                    create3DBrick(c, r, 1, 1, 'round', cell, studPitch, gridSize);
+                                    placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'round', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                                    cRound++;
+                                    continue;
+                                }
+                            }
+
+                            if (shapeMode === 'round') {
                                 used[r][c] = true;
                                 create3DBrick(c, r, 1, 1, 'round', cell, studPitch, gridSize);
                                 placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'round', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
                                 cRound++;
                                 continue;
                             }
-                        }
 
-                        if (shapeMode === 'round') {
+                            if (c + 1 < gridSize && r + 1 < gridSize &&
+                                !used[r][c+1] && !used[r+1][c] && !used[r+1][c+1] &&
+                                sameColor(cell, grid[r][c+1]) && sameColor(cell, grid[r+1][c]) && sameColor(cell, grid[r+1][c+1])) {
+                                used[r][c] = used[r][c+1] = used[r+1][c] = used[r+1][c+1] = true;
+                                create3DBrick(c, r, 2, 2, 'square', cell, studPitch, gridSize);
+                                placedPieces.push({ row: r, col: c, studsX: 2, studsY: 2, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                                c22++;
+                                continue;
+                            }
+
+                            if (c + 1 < gridSize && !used[r][c+1] && sameColor(cell, grid[r][c+1])) {
+                                used[r][c] = used[r][c+1] = true;
+                                create3DBrick(c, r, 2, 1, 'square', cell, studPitch, gridSize);
+                                placedPieces.push({ row: r, col: c, studsX: 2, studsY: 1, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                                c12++;
+                                continue;
+                            }
+
                             used[r][c] = true;
-                            create3DBrick(c, r, 1, 1, 'round', cell, studPitch, gridSize);
-                            placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'round', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
-                            cRound++;
-                            continue;
+                            create3DBrick(c, r, 1, 1, 'square', cell, studPitch, gridSize);
+                            placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                            c11++;
                         }
-
-                        // Try 2x2 Square Block
-                        if (c + 1 < gridSize && r + 1 < gridSize &&
-                            !used[r][c+1] && !used[r+1][c] && !used[r+1][c+1] &&
-                            sameColor(cell, grid[r][c+1]) && sameColor(cell, grid[r+1][c]) && sameColor(cell, grid[r+1][c+1])) {
-                            
-                            used[r][c] = used[r][c+1] = used[r+1][c] = used[r+1][c+1] = true;
-                            create3DBrick(c, r, 2, 2, 'square', cell, studPitch, gridSize);
-                            placedPieces.push({ row: r, col: c, studsX: 2, studsY: 2, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
-                            c22++;
-                            continue;
-                        }
-
-                        // Try 1x2 Horizontal Block
-                        if (c + 1 < gridSize && !used[r][c+1] && sameColor(cell, grid[r][c+1])) {
-                            used[r][c] = used[r][c+1] = true;
-                            create3DBrick(c, r, 2, 1, 'square', cell, studPitch, gridSize);
-                            placedPieces.push({ row: r, col: c, studsX: 2, studsY: 1, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
-                            c12++;
-                            continue;
-                        }
-
-                        // Default 1x1 Square
-                        used[r][c] = true;
-                        create3DBrick(c, r, 1, 1, 'square', cell, studPitch, gridSize);
-                        placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
-                        c11++;
                     }
+
+                    const finalPieces = applyManualEdits(placedPieces, project);
+                    const editedMaxPlates = finalPieces.reduce((max, piece) => Math.max(max, piece.plates), 1);
+
+                    for (let index = legoGroup.children.length - 1; index >= 0; index--) {
+                        const child = legoGroup.children[index];
+                        if (!child.userData.isBaseplate) {
+                            if (child.geometry) child.geometry.dispose();
+                            legoGroup.remove(child);
+                        }
+                    }
+
+                    finalPieces.forEach(piece => {
+                        create3DBrick(piece.col, piece.row, piece.studsX, piece.studsY, piece.shapeType, { hex: piece.hex, plates: piece.plates, transparent: piece.transparent }, studPitch, gridSize);
+                    });
+
+                    const totalBricks = finalPieces.length;
+                    const totalStuds = gridSize * gridSize;
+                    const totalPhysicalPieces = finalPieces.reduce((sum, p) => sum + p.plates, 0);
+                    const roundCount = finalPieces.filter(piece => piece.shapeType === 'round').length;
+                    const square1x1Count = finalPieces.filter(piece => piece.shapeType !== 'round' && piece.studsX === 1 && piece.studsY === 1).length;
+                    const square1x2Count = finalPieces.filter(piece => piece.shapeType !== 'round' && ((piece.studsX === 2 && piece.studsY === 1) || (piece.studsX === 1 && piece.studsY === 2))).length;
+                    const square2x2Count = finalPieces.filter(piece => piece.shapeType !== 'round' && piece.studsX === 2 && piece.studsY === 2).length;
+                    statTotalBricks.textContent = totalBricks.toLocaleString();
+                    statTotalStuds.textContent = totalStuds.toLocaleString();
+                    countRound.textContent = roundCount;
+                    count1x1.textContent = square1x1Count;
+                    count1x2.textContent = square1x2Count;
+                    count2x2.textContent = square2x2Count;
+
+                    const realWidthCm = (gridSize * STUD_PITCH_MM / 10).toFixed(1);
+                    const realDepthCm = (editedMaxPlates * PLATE_HEIGHT_MM / 10).toFixed(1);
+                    realFootprint.textContent = `${realWidthCm} x ${realWidthCm} cm`;
+                    realDepth.textContent = `${realDepthCm} cm`;
+                    realTotalPieces.textContent = totalPhysicalPieces.toLocaleString();
+                    instructionsBtn.disabled = false;
+
+                    lastBuild = {
+                        projectId: project.id,
+                        projectName: project.name,
+                        gridSize, usePalette, placedPieces: finalPieces, maxPlates: editedMaxPlates,
+                        totalPhysicalPieces, totalBricks, totalStuds,
+                        realWidthCm, realDepthCm,
+                        manualEdits: project.manualEdits.slice(),
+                        projectSettings: { ...project.settings }
+                    };
+                    project.lastBuild = lastBuild;
+
+                    const camDist = gridSize * 1.5;
+                    camera.position.set(0, -camDist * 0.8, camDist * 0.9);
+                    controls.target.set(0, 0, maxExtrusion * 0.5);
+                } finally {
+                    setLoadingState(false);
                 }
-
-                // Update UI Counters
-                const totalBricks = cRound + c11 + c12 + c22;
-                const totalStuds = gridSize * gridSize;
-                const totalPhysicalPieces = placedPieces.reduce((sum, p) => sum + p.plates, 0);
-                statTotalBricks.textContent = totalBricks.toLocaleString();
-                statTotalStuds.textContent = totalStuds.toLocaleString();
-                countRound.textContent = cRound;
-                count1x1.textContent = c11;
-                count1x2.textContent = c12;
-                count2x2.textContent = c22;
-
-                // Dimensioni reali (scala LEGO® ufficiale: 8mm/stud, 3.2mm/plate)
-                const realWidthCm = (gridSize * STUD_PITCH_MM / 10).toFixed(1);
-                const realDepthCm = (maxPlates * PLATE_HEIGHT_MM / 10).toFixed(1);
-                realFootprint.textContent = `${realWidthCm} x ${realWidthCm} cm`;
-                realDepth.textContent = `${realDepthCm} cm`;
-                realTotalPieces.textContent = totalPhysicalPieces.toLocaleString();
-                instructionsBtn.disabled = false;
-
-                lastBuild = {
-                    gridSize, usePalette, placedPieces, maxPlates,
-                    totalPhysicalPieces, totalBricks, totalStuds,
-                    realWidthCm, realDepthCm
-                };
-
-                // Adjust camera zoom to fit grid size
-                const camDist = gridSize * 1.5;
-                camera.position.set(0, -camDist * 0.8, camDist * 0.9);
-                controls.target.set(0, 0, maxExtrusion * 0.5);
             }
 
             function sameColor(c1, c2) {
@@ -1067,6 +2022,50 @@
                     </tr>`;
                 }).join('');
 
+                const manualSteps = build.manualEdits.length
+                    ? build.manualEdits.map((edit, index) => {
+                        const isArea = edit.target === 'area';
+                        const label = edit.label || `Modifica ${index + 1}`;
+                        const dimensions = isArea ? `area ${edit.width}x${edit.height}` : `${edit.studsX}x${edit.studsY}`;
+                        return `
+                            <div class="step-card">
+                                <div class="flex items-start gap-3">
+                                    <div class="step-badge">${index + 2}</div>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-bold text-slate-100">${label}</div>
+                                        <div class="text-[11px] text-slate-400 mt-0.5">${edit.mode === 'insert' ? 'Inserisci' : edit.mode === 'modify' ? 'Modifica' : 'Cancella'} ${isArea ? 'area' : 'pezzo'} · R${edit.row + 1} C${edit.col + 1} · ${dimensions}</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }).join('')
+                    : `<div class="step-card text-[11px] text-slate-400">Nessuna modifica manuale salvata su questo tab.</div>`;
+
+                const rowBandSize = 8;
+                const rowSteps = [];
+                let stepNumber = 2 + build.manualEdits.length;
+                for (let startRow = 0; startRow < build.gridSize; startRow += rowBandSize) {
+                    const endRow = Math.min(build.gridSize - 1, startRow + rowBandSize - 1);
+                    const pieces = build.placedPieces.filter(piece => piece.row >= startRow && piece.row <= endRow);
+                    const summary = summarizePieces(pieces).slice(0, 4).map(piece => {
+                        const hexStr = '#' + piece.hex.toString(16).padStart(6, '0').toUpperCase();
+                        const match = LEGO_PALETTE_SOLID.concat(LEGO_PALETTE_TRANS).find(c => c.hex === piece.hex);
+                        const name = build.usePalette ? ((match?.name || hexStr) + (piece.transparent ? ' (Trasp.)' : '')) : hexStr;
+                        return `${piece.quantity} ${piece.label} ${name}`;
+                    }).join(' · ');
+                    rowSteps.push(`
+                        <div class="step-card">
+                            <div class="flex items-start gap-3">
+                                <div class="step-badge">${stepNumber++}</div>
+                                <div class="flex-1">
+                                    <div class="text-sm font-bold text-slate-100">Righe ${startRow + 1}-${endRow + 1}</div>
+                                    <div class="text-[11px] text-slate-400 mt-0.5">Posiziona i pezzi di questa fascia da sinistra verso destra, seguendo la mappa dall'alto.</div>
+                                    <div class="text-[11px] text-slate-300 mt-2 leading-relaxed">${summary || 'Nessun pezzo in questa fascia.'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                }
+
                 instructionsContent.innerHTML = `
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                         <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
@@ -1084,6 +2083,23 @@
                         <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
                             <div class="text-slate-400 mb-1">Pezzi fisici totali</div>
                             <div class="font-bold text-yellow-400 text-sm">${build.totalPhysicalPieces.toLocaleString()}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="font-heading font-bold text-sm text-slate-100 mb-2">Passi di costruzione</h3>
+                        <div class="space-y-3">
+                            <div class="step-card">
+                                <div class="flex items-start gap-3">
+                                    <div class="step-badge">1</div>
+                                    <div>
+                                        <div class="text-sm font-bold text-slate-100">Prepara la baseplate</div>
+                                        <div class="text-[11px] text-slate-400 mt-0.5">Usa il tab attivo come progetto unico e monta la base prima dei pezzi superiori.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            ${manualSteps}
+                            ${rowSteps.join('')}
                         </div>
                     </div>
 

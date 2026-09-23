@@ -1,0 +1,25 @@
+# Spike LEGO Designer
+
+> Software online che trasforma qualsiasi immagine (fotografie, loghi, disegni) in un mosaico LEGO personalizzato e costruibile. Slogan: "Da qualsiasi immagine, il tuo mosaico LEGO."
+
+URL: https://www.filippomorano.com/projects/spikelegodesigner/
+Autore: Filippo Morano (https://www.filippomorano.com/)
+Codice sorgente: https://github.com/superpippoub77/LEGO-3D-Studio---Mosaici-con-Istruzioni
+Lingua: italiano · Piattaforma: browser web (JavaScript + WebGL)
+
+## Cosa fa
+Spike LEGO Designer converte fotografie, loghi e immagini in progetti costruibili con mattoncini LEGO. Si carica una foto, si sceglie la dimensione del mosaico e il software genera automaticamente la disposizione dei colori e dei pezzi necessari.
+
+## Funzionalità principali
+- Conversione automatica immagini → mosaico LEGO
+- Riduzione intelligente dei colori sulla palette dei colori LEGO reali
+- Anteprima in tempo reale con vista 3D
+- Conteggio dei pezzi necessari (distinta pezzi)
+- Griglia di costruzione dettagliata
+- Esportazione del progetto
+
+## Per chi è
+Appassionati LEGO, maker, scuole, laboratori STEM, pixel artist e creatori di mosaici personalizzati. Utile per ritratti, loghi, pixel art e opere murali LEGO.
+
+## Note
+LEGO® è un marchio registrato del Gruppo LEGO, che non sponsorizza, autorizza né approva questo progetto.

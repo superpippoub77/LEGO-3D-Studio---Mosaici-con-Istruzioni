@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="it" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGO® Studio 3D - Mosaici con Altezza e Forme Miste</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js per rendering 3D reale con altezza ed estrusione -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- FontAwesome Icons & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; user-select: none; }
+        h1, h2, .font-heading { font-family: 'Fredoka', sans-serif; }
+        .lego-grid-bg {
+            background-color: #0b1120;
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 2px, transparent 2px);
+            background-size: 20px 20px;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        .brick-type-option input:checked + div {
+            border-color: #facc15;
+            background-color: rgba(250, 204, 21, 0.12);
+            color: #facc15;
+        }
+        .parts-table th, .parts-table td { padding: 6px 8px; }
+        .parts-table tr:nth-child(even) { background-color: rgba(255,255,255,0.03); }
+        .color-swatch { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); display: inline-block; vertical-align: middle; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #instructionsModal, #instructionsModal * { visibility: visible; }
+            #instructionsModal { position: absolute; inset: 0; padding: 0; background: white; }
+            #instructionsOverlay { display: none; }
+            #instructionsModal .relative { max-width: 100%; max-height: none; border: none; box-shadow: none; background: white; color: black; }
+            #instructionsContent { color: black; }
+            .no-print { display: none !important; }
+            #instructionsModal table, #instructionsModal th, #instructionsModal td { color: black !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-full flex flex-col overflow-hidden">
+
+    <header class="h-16 bg-slate-900 border-b border-slate-800 px-4 md:px-6 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-red-600 text-white p-2.5 rounded-xl shadow-lg shadow-red-600/30 flex items-center justify-center border-2 border-yellow-400">
+                <i class="fa-solid fa-cubes text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-slate-100 text-lg md:text-xl leading-tight flex items-center gap-2">
+                    LEGO® <span class="text-yellow-400 font-normal">3D Studio & Forme Miste</span>
+                </h1>
+                <p class="text-xs text-slate-400 hidden sm:block">Mattoncini Tondi + Quadrati con Vera Altezza Estrusa 3D</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button id="export3dBtn" disabled class="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-slate-950 font-bold text-xs md:text-sm rounded-xl shadow-md transition flex items-center gap-2">
+                <i class="fa-solid fa-camera"></i>
+                <span>Cattura Vista 3D (PNG)</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden relative">
+
+        <aside class="w-full md:w-80 lg:w-96 bg-slate-900/95 border-r border-slate-800 flex flex-col overflow-y-auto shrink-0 z-10 backdrop-blur-md">
+            <div class="p-4 md:p-5 space-y-5">
+
+                <!-- 1. CARICAMENTO IMMAGINE -->
+                <div class="space-y-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> 1. Immagine Sorgente
+                    </span>
+
+                    <label id="dropZone" class="group relative flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-yellow-400 bg-slate-800/50 hover:bg-slate-800 rounded-2xl p-4 cursor-pointer transition-all">
+                        <div class="w-10 h-10 rounded-full bg-slate-700/50 group-hover:bg-yellow-400/10 text-yellow-400 flex items-center justify-center mb-1.5 transition">
+                            <i class="fa-solid fa-image text-xl"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-200 text-center">Trascina o clicca per caricare</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">PNG, JPG, WEBP</span>
+                        <input type="file" id="imageInput" accept="image/*" class="hidden">
+                    </label>
+
+                    <div id="loadedImgInfo" class="hidden flex items-center gap-3 p-2 bg-slate-800 rounded-xl border border-slate-700">
+                        <img id="sourceThumbnail" class="w-10 h-10 object-cover rounded-lg border border-slate-600 bg-black" src="" alt="Sorgente">
+                        <div class="flex-1 overflow-hidden">
+                            <p id="sourceFileName" class="text-xs font-medium text-slate-200 truncate">immagine.jpg</p>
+                            <p id="sourceDimensions" class="text-[10px] text-slate-400">0 x 0 px</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-800"></div>
+
+                <!-- 2. FORMA & MIX MATTONCINI -->
+                <div class="space-y-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-shapes"></i> 2. Forme & Mix Mattoncini
+                    </span>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="brick-type-option cursor-pointer">
+                            <input type="radio" name="brickShape" value="realMixed" checked class="hidden">
+                            <div class="flex flex-col items-center p-2.5 bg-slate-800 border-2 border-slate-700 rounded-xl text-slate-300 transition text-center h-full">
+                                <i class="fa-solid fa-layer-group text-lg mb-1 text-yellow-400"></i>
+                                <span class="text-[10px] font-bold">Misti Tondi + Quadrati</span>
+                                <span class="text-[8px] text-slate-400 mt-0.5">Forme varie realistiche</span>
+                            </div>
+                        </label>
+
+                        <label class="brick-type-option cursor-pointer">
+                            <input type="radio" name="brickShape" value="square" class="hidden">
+                            <div class="flex flex-col items-center p-2.5 bg-slate-800 border-2 border-slate-700 rounded-xl text-slate-300 transition text-center h-full">
+                                <i class="fa-solid fa-square text-lg mb-1"></i>
+                                <span class="text-[10px] font-bold">Misti Quadrati / Rett.</span>
+                                <span class="text-[8px] text-slate-400 mt-0.5">1x1, 1x2, 2x2</span>
+                            </div>
+                        </label>
+
+                        <label class="brick-type-option cursor-pointer">
+                            <input type="radio" name="brickShape" value="round" class="hidden">
+                            <div class="flex flex-col items-center p-2.5 bg-slate-800 border-2 border-slate-700 rounded-xl text-slate-300 transition text-center h-full">
+                                <i class="fa-solid fa-circle text-lg mb-1"></i>
+                                <span class="text-[10px] font-bold">Solo Tondi 1x1</span>
+                                <span class="text-[8px] text-slate-400 mt-0.5">Piastrelle circolari</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-800"></div>
+
+                <!-- 3. PARAMETRI ALTEZZA 3D E DIMENSIONE -->
+                <div class="space-y-3.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-cubes-stacked"></i> 3. Altezza 3D & Risoluzione
+                    </span>
+
+                    <!-- Height 3D Extrusion Slider -->
+                    <div class="space-y-1 bg-slate-800/80 p-2.5 rounded-xl border border-yellow-500/30">
+                        <div class="flex justify-between items-center text-xs">
+                            <label for="height3d" class="text-yellow-400 font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-up-long"></i> VERA Altezza 3D (Layer Spessore)
+                            </label>
+                            <span id="height3dValue" class="text-yellow-400 font-mono font-bold bg-slate-900 px-2 py-0.5 rounded border border-yellow-500/40">Livello 3.5</span>
+                        </div>
+                        <input type="range" id="height3d" min="0" max="8" value="3.5" step="0.5" class="w-full accent-yellow-400 bg-slate-900 h-2 rounded-lg cursor-pointer">
+                        <p class="text-[9px] text-slate-400 mt-1">I mattoncini sporgono a varie altezze reali basandosi sulla luminosità/dettagli dell'immagine.</p>
+                    </div>
+
+                    <!-- Resolution / Stud Size -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center text-xs">
+                            <label for="studSize" class="text-slate-300 font-medium">Risoluzione Griglia</label>
+                            <span id="studSizeValue" class="text-yellow-400 font-mono font-bold bg-slate-800 px-2 py-0.5 rounded border border-slate-700">48 x 48</span>
+                        </div>
+                        <input type="range" id="studSize" min="20" max="80" value="48" step="4" class="w-full accent-yellow-400 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Official Lego Palette -->
+                    <div class="flex items-center justify-between bg-slate-800/60 p-2.5 rounded-xl border border-slate-800">
+                        <label for="useOfficialPalette" class="text-xs font-medium text-slate-200 cursor-pointer flex items-center gap-2">
+                            <i class="fa-solid fa-palette text-red-500"></i>
+                            <span>Palette Colori LEGO® Reale</span>
+                        </label>
+                        <input type="checkbox" id="useOfficialPalette" checked class="w-4 h-4 accent-yellow-400 rounded cursor-pointer">
+                    </div>
+
+                    <div id="palettePanel" class="space-y-2 bg-slate-800/50 p-2.5 rounded-xl border border-slate-800">
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="text-slate-300 font-medium">Colori selezionati: <span id="paletteCountLabel" class="text-yellow-400 font-mono font-bold">18</span> / <span id="paletteTotalLabel">32</span></span>
+                            <div class="flex gap-1">
+                                <button type="button" data-preset="6" class="palettePresetBtn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-[10px] text-slate-200">6</button>
+                                <button type="button" data-preset="12" class="palettePresetBtn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-[10px] text-slate-200">12</button>
+                                <button type="button" data-preset="18" class="palettePresetBtn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-[10px] text-slate-200">18</button>
+                                <button type="button" data-preset="all" class="palettePresetBtn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-[10px] text-slate-200">Tutti</button>
+                                <button type="button" data-preset="none" class="palettePresetBtn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-[10px] text-slate-200">Nessuno</button>
+                            </div>
+                        </div>
+                        <div id="solidColorGrid" class="grid grid-cols-6 gap-1.5 max-h-32 overflow-y-auto pr-1"></div>
+
+                        <div class="flex items-center justify-between pt-1 border-t border-slate-700/60">
+                            <label for="includeTransparent" class="text-[11px] font-medium text-slate-300 cursor-pointer flex items-center gap-1.5">
+                                <i class="fa-solid fa-droplet text-cyan-300"></i> Includi colori trasparenti
+                            </label>
+                            <input type="checkbox" id="includeTransparent" class="w-3.5 h-3.5 accent-cyan-400 rounded cursor-pointer">
+                        </div>
+                        <div id="transColorGrid" class="hidden grid grid-cols-6 gap-1.5 max-h-24 overflow-y-auto pr-1"></div>
+                        <p class="text-[9px] text-slate-500">Elenco basato sui colori LEGO® attualmente in produzione (fonte BrickLink/LEGO, 2025-2026); LEGO ruota periodicamente alcune tonalità.</p>
+                    </div>
+
+                    <!-- Brightness / Contrast -->
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[11px] text-slate-300">
+                                <span>Luminosità</span>
+                                <span id="brightnessVal" class="text-slate-400 font-mono">0</span>
+                            </div>
+                            <input type="range" id="brightness" min="-50" max="50" value="0" class="w-full accent-yellow-400 bg-slate-800 h-1.5 rounded cursor-pointer">
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[11px] text-slate-300">
+                                <span>Contrasto</span>
+                                <span id="contrastVal" class="text-slate-400 font-mono">10</span>
+                            </div>
+                            <input type="range" id="contrast" min="-50" max="50" value="10" class="w-full accent-yellow-400 bg-slate-800 h-1.5 rounded cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-800"></div>
+
+                <!-- SFONDO & PIATTAFORMA -->
+                <div class="space-y-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-square"></i> Sfondo & Piattaforma
+                    </span>
+                    <div id="baseplateGrid" class="grid grid-cols-4 gap-2"></div>
+                    <p class="text-[9px] text-slate-400">Le 4 evidenziate corrispondono alle Baseplate Classic ufficiali oggi in commercio (Verde 11023, Grigio 11024, Blu 11025, Bianco 11026). Le altre sono colori LEGO® attuali per piastre/tessere di grandi dimensioni.</p>
+                </div>
+
+                <div class="border-t border-slate-800"></div>
+
+                <!-- 4. TRASFORMA E INVENTARIO PEZZI -->
+                <button id="transformBtn" disabled class="w-full py-3 px-4 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-600/25 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span>RICALCOLA MOSAICO 3D</span>
+                </button>
+
+                <div class="space-y-2 pt-2 border-t border-slate-800">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Inventario Pezzi Impiegati</span>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="bg-slate-800/80 p-2 rounded-lg border border-slate-700 flex justify-between items-center">
+                            <span class="text-slate-400 text-[11px]">Totale Pezzi:</span>
+                            <span id="statTotalBricks" class="font-bold text-yellow-400 font-mono">0</span>
+                        </div>
+                        <div class="bg-slate-800/80 p-2 rounded-lg border border-slate-700 flex justify-between items-center">
+                            <span class="text-slate-400 text-[11px]">Borchie Studs:</span>
+                            <span id="statTotalStuds" class="font-bold text-slate-200 font-mono">0</span>
+                        </div>
+                    </div>
+                    <div id="mixedDetailsGrid" class="grid grid-cols-4 gap-1 pt-1 text-[10px] text-slate-300">
+                        <div class="bg-slate-800 p-1 rounded border border-slate-700 text-center">
+                            <span class="block text-slate-400">Tondi 1x1</span>
+                            <span id="countRound" class="font-bold font-mono text-yellow-400">0</span>
+                        </div>
+                        <div class="bg-slate-800 p-1 rounded border border-slate-700 text-center">
+                            <span class="block text-slate-400">Quad 1x1</span>
+                            <span id="count1x1" class="font-bold font-mono text-yellow-400">0</span>
+                        </div>
+                        <div class="bg-slate-800 p-1 rounded border border-slate-700 text-center">
+                            <span class="block text-slate-400">Rect 1x2</span>
+                            <span id="count1x2" class="font-bold font-mono text-yellow-400">0</span>
+                        </div>
+                        <div class="bg-slate-800 p-1 rounded border border-slate-700 text-center">
+                            <span class="block text-slate-400">Quad 2x2</span>
+                            <span id="count2x2" class="font-bold font-mono text-yellow-400">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-800"></div>
+
+                <!-- 5. DIMENSIONI REALI & ISTRUZIONI -->
+                <div class="space-y-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-ruler-combined"></i> 5. Dimensioni Reali & Istruzioni
+                    </span>
+
+                    <div class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 space-y-1 text-[11px]">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Formato pannello (L x A):</span>
+                            <span id="realFootprint" class="font-mono font-bold text-slate-100">- x - cm</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Spessore massimo:</span>
+                            <span id="realDepth" class="font-mono font-bold text-slate-100">- cm</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Pezzi fisici totali:</span>
+                            <span id="realTotalPieces" class="font-mono font-bold text-yellow-400">0</span>
+                        </div>
+                    </div>
+
+                    <button id="instructionsBtn" disabled class="w-full py-2.5 px-4 bg-slate-100 hover:bg-white disabled:opacity-40 text-slate-950 font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-book-open"></i>
+                        <span>GENERA ISTRUZIONI & DISTINTA PEZZI</span>
+                    </button>
+                </div>
+
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col bg-slate-950 relative overflow-hidden">
+            <!-- Viewport top bar -->
+            <div class="h-12 bg-slate-900/80 border-b border-slate-800 px-4 flex items-center justify-between z-10">
+                <div class="flex items-center space-x-2 text-xs text-slate-300">
+                    <span class="bg-red-600/20 text-red-400 px-2.5 py-1 rounded-md font-semibold border border-red-500/30 flex items-center gap-1.5">
+                        <i class="fa-solid fa-cube"></i> Vista 3D Interattiva WebGL
+                    </span>
+                    <span class="text-slate-400 hidden lg:inline"><i class="fa-solid fa-hand-pointer text-yellow-400"></i> Ruota con il mouse / Trascina per esplorare la profondità 3D</span>
+                </div>
+
+                <button id="resetCamBtn" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-video"></i> Reset Angolo Camera
+                </button>
+            </div>
+
+            <!-- WebGL Canvas Container -->
+            <div id="viewport" class="flex-1 lego-grid-bg relative flex items-center justify-center overflow-hidden">
+                <div id="emptyState" class="flex flex-col items-center justify-center text-center p-8 max-w-md border-2 border-dashed border-slate-800 rounded-3xl bg-slate-900/50 backdrop-blur-sm z-10">
+                    <div class="w-20 h-20 bg-slate-800/80 rounded-2xl flex items-center justify-center mb-4 text-yellow-400 shadow-xl border border-slate-700">
+                        <i class="fa-solid fa-cubes text-4xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-200 mb-1">Nessuna Immagine Caricata</h3>
+                    <p class="text-xs text-slate-400">Carica una foto per generare il mosaico 3D reale con mattoncini estrusi ad altezze differenti.</p>
+                </div>
+
+                <div id="webglContainer" class="w-full h-full absolute inset-0"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ISTRUZIONI / DISTINTA PEZZI MODAL -->
+    <div id="instructionsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 md:p-8">
+        <div id="instructionsOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+        <div class="relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-full flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 shrink-0 no-print">
+                <h2 class="font-heading font-bold text-slate-100 text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-yellow-400"></i> Istruzioni di Costruzione
+                </h2>
+                <div class="flex items-center gap-2">
+                    <button id="downloadMapBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-image"></i> Mappa PNG
+                    </button>
+                    <button id="printInstructionsBtn" class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-print"></i> Stampa / PDF
+                    </button>
+                    <button id="closeInstructionsBtn" class="w-8 h-8 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="instructionsContent" class="overflow-y-auto p-5 space-y-5 text-slate-200">
+                <!-- Filled dynamically by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden canvas for image analysis -->
+    <canvas id="analysisCanvas" class="hidden"></canvas>
+    <canvas id="mapExportCanvas" class="hidden"></canvas>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // Colori LEGO® SOLIDI attualmente in produzione (nomi e tonalità ufficiali/BrickLink, aggiornati 2025-2026).
+            // L'ordine determina la priorità con cui vengono selezionati dai pulsanti rapidi "6 / 12 / 18 colori".
+            const LEGO_PALETTE_SOLID = [
+                { name: 'Bianco', rgb: [244, 244, 244], hex: 0xF4F4F4 },
+                { name: 'Nero', rgb: [27, 42, 52], hex: 0x1B2A34 },
+                { name: 'Grigio Chiaro Bluastro', rgb: [160, 165, 169], hex: 0xA0A5A9 },
+                { name: 'Grigio Scuro Bluastro', rgb: [108, 110, 104], hex: 0x6C6E68 },
+                { name: 'Rosso Vivo', rgb: [227, 0, 11], hex: 0xE3000B },
+                { name: 'Giallo Vivo', rgb: [255, 213, 0], hex: 0xFFD500 },
+                { name: 'Blu Vivo', rgb: [0, 85, 191], hex: 0x0055BF },
+                { name: 'Verde Scuro', rgb: [0, 133, 43], hex: 0x00852B },
+                { name: 'Arancione Vivo', rgb: [240, 109, 0], hex: 0xF06D00 },
+                { name: 'Marrone Rossiccio', rgb: [105, 46, 20], hex: 0x692E14 },
+                { name: 'Tan (Sabbia)', rgb: [214, 181, 132], hex: 0xD6B584 },
+                { name: 'Rosso Scuro', rgb: [114, 14, 15], hex: 0x720E0F },
+                { name: 'Verde Sabbia', rgb: [112, 142, 124], hex: 0x708E7C },
+                { name: 'Verde Lime', rgb: [187, 233, 11], hex: 0xBBE90B },
+                { name: 'Azzurro Scuro', rgb: [10, 157, 183], hex: 0x0A9DB7 },
+                { name: 'Azzurro Medio', rgb: [90, 196, 208], hex: 0x5AC4D0 },
+                { name: 'Verde Brillante', rgb: [75, 159, 74], hex: 0x4B9F4A },
+                { name: 'Verde Oliva', rgb: [155, 154, 90], hex: 0x9B9A5A },
+                { name: 'Tan Scuro', rgb: [149, 138, 115], hex: 0x958A73 },
+                { name: 'Nougat', rgb: [208, 144, 82], hex: 0xD09052 },
+                { name: 'Nougat Medio', rgb: [170, 125, 85], hex: 0xAA7D55 },
+                { name: 'Marrone Scuro', rgb: [53, 33, 0], hex: 0x352100 },
+                { name: 'Blu Sabbia', rgb: [109, 130, 150], hex: 0x6D8296 },
+                { name: 'Viola Scuro', rgb: [107, 42, 143], hex: 0x6B2A8F },
+                { name: 'Rosa Vivo', rgb: [228, 173, 200], hex: 0xE4ADC8 },
+                { name: 'Viola Medio', rgb: [156, 81, 182], hex: 0x9C51B6 },
+                { name: 'Blu Chiaro', rgb: [180, 210, 227], hex: 0xB4D2E3 },
+                { name: 'Blu Scuro', rgb: [10, 52, 99], hex: 0x0A3463 },
+                { name: 'Grigio Chiaro', rgb: [155, 161, 157], hex: 0x9BA19D },
+                { name: 'Grigio Scuro', rgb: [109, 110, 108], hex: 0x6D6E6C },
+                { name: 'Corallo', rgb: [255, 105, 105], hex: 0xFF6969 },
+                { name: 'Arancio Scuro', rgb: [168, 71, 13], hex: 0xA8470D }
+            ];
+
+            // Colori LEGO® TRASPARENTI attualmente in produzione (usati per finestre, gemme, effetti luce/acqua)
+            const LEGO_PALETTE_TRANS = [
+                { name: 'Trasparente Incolore', rgb: [238, 240, 240], hex: 0xEEF0F0, transparent: true },
+                { name: 'Trasparente Rosso', rgb: [201, 26, 9], hex: 0xC91A09, transparent: true },
+                { name: 'Trasparente Arancione', rgb: [234, 140, 30], hex: 0xEA8C1E, transparent: true },
+                { name: 'Trasparente Giallo', rgb: [245, 205, 47], hex: 0xF5CD2F, transparent: true },
+                { name: 'Trasparente Verde', rgb: [0, 143, 84], hex: 0x008F54, transparent: true },
+                { name: 'Trasparente Verde Chiaro', rgb: [173, 216, 150], hex: 0xADD896, transparent: true },
+                { name: 'Trasparente Azzurro Chiaro', rgb: [193, 223, 240], hex: 0xC1DFF0, transparent: true },
+                { name: 'Trasparente Blu', rgb: [0, 32, 160], hex: 0x0020A0, transparent: true },
+                { name: 'Trasparente Viola', rgb: [123, 47, 123], hex: 0x7B2F7B, transparent: true },
+                { name: 'Trasparente Nero', rgb: [30, 30, 30], hex: 0x1E1E1E, transparent: true }
+            ];
+
+            // Piattaforme (baseplate) reali. isOfficialSet: le 4 piattaforme Classic 32x32/48x32 vendute a sé stanti da LEGO oggi.
+            const BASEPLATE_COLORS = [
+                { name: 'Verde', hex: 0x237841, isOfficialSet: true, note: 'Baseplate Classic 11023, 32x32' },
+                { name: 'Grigio', hex: 0xA0A5A9, isOfficialSet: true, note: 'Baseplate Classic 11024, 48x48' },
+                { name: 'Blu', hex: 0x0055BF, isOfficialSet: true, note: 'Baseplate Classic 11025, 32x32' },
+                { name: 'Bianco', hex: 0xF4F4F4, isOfficialSet: true, note: 'Baseplate Classic 11026, 32x32' },
+                { name: 'Nero', hex: 0x1B2A34, isOfficialSet: false, note: 'Colore attuale, piastra grande da set' },
+                { name: 'Tan (Sabbia)', hex: 0xD6B584, isOfficialSet: false, note: 'Colore attuale, piastra grande da set' },
+                { name: 'Verde Sabbia', hex: 0x708E7C, isOfficialSet: false, note: 'Colore attuale, piastra grande da set' },
+                { name: 'Marrone Rossiccio', hex: 0x692E14, isOfficialSet: false, note: 'Colore attuale, piastra grande da set' }
+            ];
+
+            // Stato di selezione: quali colori l'utente vuole realmente usare (checkbox nella UI)
+            let activePaletteColors = LEGO_PALETTE_SOLID.slice(0, 18); // default: i 18 più comuni/versatili
+            let currentBaseplateHex = BASEPLATE_COLORS[0].hex;
+
+            // Retro-compatibilità: alcune funzioni più sotto usano ancora il nome LEGO_PALETTE
+            const LEGO_PALETTE = LEGO_PALETTE_SOLID;
+
+            // Scala reale LEGO® (misure ufficiali in millimetri)
+            const STUD_PITCH_MM = 8;    // distanza reale tra due borchie
+            const PLATE_HEIGHT_MM = 3.2; // spessore reale di una plate (1 layer)
+
+            // Stato dell'ultimo mosaico calcolato, usato per generare le istruzioni
+            let lastBuild = null;
+
+            function shapeLabel(shapeType, studsX, studsY) {
+                if (shapeType === 'round') return 'Tondo 1x1';
+                if (studsX === 2 && studsY === 2) return 'Quadrato 2x2';
+                if (studsX === 2 || studsY === 2) return 'Rettangolo 1x2';
+                return 'Quadrato 1x1';
+            }
+
+            function colorLabel(cell, usePalette) {
+                if (usePalette) {
+                    const match = LEGO_PALETTE_SOLID.concat(LEGO_PALETTE_TRANS).find(p => p.hex === cell.hex);
+                    if (match) return match.name + (match.transparent ? ' (Trasp.)' : '');
+                }
+                return '#' + cell.hex.toString(16).padStart(6, '0').toUpperCase();
+            }
+
+            function swatchHtml(idPrefix, color, checked) {
+                const hexStr = '#' + color.hex.toString(16).padStart(6, '0');
+                return `<label class="flex flex-col items-center gap-0.5 cursor-pointer" title="${color.name}">
+                    <span class="w-6 h-6 rounded border-2 ${checked ? 'border-yellow-400' : 'border-slate-700'}" style="background:${hexStr};${color.transparent ? 'opacity:.55' : ''}"></span>
+                    <input type="checkbox" data-hex="${color.hex}" id="${idPrefix}_${color.hex}" class="hidden" ${checked ? 'checked' : ''}>
+                </label>`;
+            }
+
+            function updatePaletteCountLabel() {
+                const checkedSolid = solidColorGrid.querySelectorAll('input:checked').length;
+                paletteCountLabel.textContent = checkedSolid;
+                paletteTotalLabel.textContent = LEGO_PALETTE_SOLID.length;
+            }
+
+            function recomputeActivePalette() {
+                activePaletteColors = LEGO_PALETTE_SOLID.filter(c => document.getElementById('solid_' + c.hex)?.checked);
+                if (activePaletteColors.length === 0) activePaletteColors = LEGO_PALETTE_SOLID.slice(0, 6); // sicurezza: mai palette vuota
+                updatePaletteCountLabel();
+                autoTransformDebounced();
+            }
+
+            function initColorAndBaseplateUI() {
+                // Griglia colori solidi
+                solidColorGrid.innerHTML = LEGO_PALETTE_SOLID.map((c, i) => swatchHtml('solid', c, i < 18)).join('');
+                solidColorGrid.querySelectorAll('input').forEach(inp => {
+                    inp.addEventListener('change', () => {
+                        inp.previousElementSibling.classList.toggle('border-yellow-400', inp.checked);
+                        inp.previousElementSibling.classList.toggle('border-slate-700', !inp.checked);
+                        recomputeActivePalette();
+                    });
+                });
+                updatePaletteCountLabel();
+
+                // Griglia colori trasparenti
+                transColorGrid.innerHTML = LEGO_PALETTE_TRANS.map(c => swatchHtml('trans', c, false)).join('');
+                transColorGrid.querySelectorAll('input').forEach(inp => {
+                    inp.addEventListener('change', () => {
+                        inp.previousElementSibling.classList.toggle('border-yellow-400', inp.checked);
+                        inp.previousElementSibling.classList.toggle('border-slate-700', !inp.checked);
+                        autoTransformDebounced();
+                    });
+                });
+                includeTransparent.addEventListener('change', () => {
+                    transColorGrid.classList.toggle('hidden', !includeTransparent.checked);
+                    autoTransformDebounced();
+                });
+
+                // Pulsanti preset (6 / 12 / 18 / Tutti / Nessuno)
+                document.querySelectorAll('.palettePresetBtn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const preset = btn.dataset.preset;
+                        const n = preset === 'all' ? LEGO_PALETTE_SOLID.length : (preset === 'none' ? 0 : parseInt(preset, 10));
+                        LEGO_PALETTE_SOLID.forEach((c, i) => {
+                            const inp = document.getElementById('solid_' + c.hex);
+                            inp.checked = i < n;
+                            inp.previousElementSibling.classList.toggle('border-yellow-400', inp.checked);
+                            inp.previousElementSibling.classList.toggle('border-slate-700', !inp.checked);
+                        });
+                        recomputeActivePalette();
+                    });
+                });
+
+                // Griglia piattaforme
+                baseplateGrid.innerHTML = BASEPLATE_COLORS.map((b, i) => {
+                    const hexStr = '#' + b.hex.toString(16).padStart(6, '0');
+                    return `<button type="button" data-hex="${b.hex}" class="baseplateBtn flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 ${i === 0 ? 'border-yellow-400' : 'border-slate-700'} bg-slate-800/60" title="${b.name}${b.isOfficialSet ? ' — ' + b.note : ''}">
+                        <span class="w-full h-6 rounded" style="background:${hexStr}"></span>
+                        <span class="text-[8px] text-slate-300 leading-none text-center">${b.name}</span>
+                        ${b.isOfficialSet ? '<span class="text-[7px] text-yellow-400 leading-none">In commercio</span>' : ''}
+                    </button>`;
+                }).join('');
+                baseplateGrid.querySelectorAll('.baseplateBtn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        currentBaseplateHex = parseInt(btn.dataset.hex, 10);
+                        baseplateGrid.querySelectorAll('.baseplateBtn').forEach(b => {
+                            b.classList.toggle('border-yellow-400', b === btn);
+                            b.classList.toggle('border-slate-700', b !== btn);
+                        });
+                        if (loadedImage) build3dLegoMosaic(); else if (legoGroup) {
+                            legoGroup.children.filter(o => o.geometry && o.geometry.type === 'BoxGeometry' && o.position.z < 0).forEach(o => o.material.color.setHex(currentBaseplateHex));
+                        }
+                    });
+                });
+
+                recomputeActivePalette();
+            }
+
+            // DOM
+            const imageInput = document.getElementById('imageInput');
+            const dropZone = document.getElementById('dropZone');
+            const loadedImgInfo = document.getElementById('loadedImgInfo');
+            const sourceThumbnail = document.getElementById('sourceThumbnail');
+            const sourceFileName = document.getElementById('sourceFileName');
+            const sourceDimensions = document.getElementById('sourceDimensions');
+
+            const height3dInput = document.getElementById('height3d');
+            const height3dValue = document.getElementById('height3dValue');
+            const studSizeInput = document.getElementById('studSize');
+            const studSizeValue = document.getElementById('studSizeValue');
+            const useOfficialPalette = document.getElementById('useOfficialPalette');
+            const palettePanel = document.getElementById('palettePanel');
+            const solidColorGrid = document.getElementById('solidColorGrid');
+            const transColorGrid = document.getElementById('transColorGrid');
+            const includeTransparent = document.getElementById('includeTransparent');
+            const paletteCountLabel = document.getElementById('paletteCountLabel');
+            const paletteTotalLabel = document.getElementById('paletteTotalLabel');
+            const baseplateGrid = document.getElementById('baseplateGrid');
+
+            const brightnessInput = document.getElementById('brightness');
+            const brightnessVal = document.getElementById('brightnessVal');
+            const contrastInput = document.getElementById('contrast');
+            const contrastVal = document.getElementById('contrastVal');
+
+            const transformBtn = document.getElementById('transformBtn');
+            const export3dBtn = document.getElementById('export3dBtn');
+            const resetCamBtn = document.getElementById('resetCamBtn');
+
+            const emptyState = document.getElementById('emptyState');
+            const webglContainer = document.getElementById('webglContainer');
+            const analysisCanvas = document.getElementById('analysisCanvas');
+            const analysisCtx = analysisCanvas.getContext('2d');
+
+            const realFootprint = document.getElementById('realFootprint');
+            const realDepth = document.getElementById('realDepth');
+            const realTotalPieces = document.getElementById('realTotalPieces');
+            const instructionsBtn = document.getElementById('instructionsBtn');
+            const instructionsModal = document.getElementById('instructionsModal');
+            const instructionsOverlay = document.getElementById('instructionsOverlay');
+            const instructionsContent = document.getElementById('instructionsContent');
+            const closeInstructionsBtn = document.getElementById('closeInstructionsBtn');
+            const printInstructionsBtn = document.getElementById('printInstructionsBtn');
+            const downloadMapBtn = document.getElementById('downloadMapBtn');
+            const mapExportCanvas = document.getElementById('mapExportCanvas');
+
+            const statTotalBricks = document.getElementById('statTotalBricks');
+            const statTotalStuds = document.getElementById('statTotalStuds');
+            const countRound = document.getElementById('countRound');
+            const count1x1 = document.getElementById('count1x1');
+            const count1x2 = document.getElementById('count1x2');
+            const count2x2 = document.getElementById('count2x2');
+
+            // THREE.JS Scene state
+            let loadedImage = null;
+            let scene, camera, renderer, controls, legoGroup;
+
+            function initThree() {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x0b1120);
+
+                const aspect = webglContainer.clientWidth / webglContainer.clientHeight;
+                camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+                camera.position.set(0, -50, 60);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+                renderer.setSize(webglContainer.clientWidth, webglContainer.clientHeight);
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                webglContainer.appendChild(renderer.domElement);
+
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxPolarAngle = Math.PI / 2 - 0.02;
+
+                // Lighting setup for realistic plastic look
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+                scene.add(ambientLight);
+
+                const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.85);
+                dirLight1.position.set(40, -40, 80);
+                dirLight1.castShadow = true;
+                dirLight1.shadow.mapSize.width = 2048;
+                dirLight1.shadow.mapSize.height = 2048;
+                scene.add(dirLight1);
+
+                const dirLight2 = new THREE.DirectionalLight(0x90b0ff, 0.35);
+                dirLight2.position.set(-50, 50, 40);
+                scene.add(dirLight2);
+
+                legoGroup = new THREE.Group();
+                scene.add(legoGroup);
+
+                window.addEventListener('resize', onWindowResize);
+                animate();
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            function onWindowResize() {
+                if (!renderer || !camera) return;
+                camera.aspect = webglContainer.clientWidth / webglContainer.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(webglContainer.clientWidth, webglContainer.clientHeight);
+            }
+
+            initColorAndBaseplateUI();
+            initThree();
+
+            height3dInput.addEventListener('input', (e) => {
+                height3dValue.textContent = 'Livello ' + e.target.value;
+                autoTransformDebounced();
+            });
+
+            studSizeInput.addEventListener('input', (e) => {
+                studSizeValue.textContent = `${e.target.value} x ${e.target.value}`;
+                autoTransformDebounced();
+            });
+
+            brightnessInput.addEventListener('input', (e) => {
+                brightnessVal.textContent = e.target.value;
+                autoTransformDebounced();
+            });
+
+            contrastInput.addEventListener('input', (e) => {
+                contrastVal.textContent = e.target.value;
+                autoTransformDebounced();
+            });
+
+            useOfficialPalette.addEventListener('change', () => {
+                palettePanel.classList.toggle('hidden', !useOfficialPalette.checked);
+                autoTransformDebounced();
+            });
+            document.querySelectorAll('input[name="brickShape"]').forEach(r => r.addEventListener('change', () => autoTransformDebounced()));
+
+            let debounceTimer = null;
+            function autoTransformDebounced() {
+                if (!loadedImage) return;
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => build3dLegoMosaic(), 100);
+            }
+
+            // File Upload
+            dropZone.addEventListener('click', () => imageInput.click());
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-yellow-400'); });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-yellow-400'));
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-yellow-400');
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+            });
+
+            imageInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+            });
+
+            function handleFile(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        loadedImage = img;
+                        sourceThumbnail.src = e.target.result;
+                        sourceFileName.textContent = file.name;
+                        sourceDimensions.textContent = `${img.width} x ${img.height} px`;
+                        loadedImgInfo.classList.remove('hidden');
+                        transformBtn.disabled = false;
+                        export3dBtn.disabled = false;
+                        emptyState.classList.add('hidden');
+                        build3dLegoMosaic();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            transformBtn.addEventListener('click', () => build3dLegoMosaic());
+
+            resetCamBtn.addEventListener('click', () => {
+                camera.position.set(0, -50, 60);
+                controls.target.set(0, 0, 0);
+            });
+
+            function getActiveColorSet() {
+                const includeTrans = document.getElementById('includeTransparent')?.checked;
+                const list = includeTrans ? activePaletteColors.concat(LEGO_PALETTE_TRANS.filter(c => document.getElementById('trans_' + c.hex)?.checked)) : activePaletteColors;
+                return list.length ? list : LEGO_PALETTE_SOLID;
+            }
+
+            function getClosestColor(r, g, b) {
+                const palette = getActiveColorSet();
+                let minDist = Infinity;
+                let closest = palette[0];
+                for (let i = 0; i < palette.length; i++) {
+                    const c = palette[i].rgb;
+                    const dist = (r - c[0]) ** 2 * 0.3 + (g - c[1]) ** 2 * 0.59 + (b - c[2]) ** 2 * 0.11;
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = palette[i];
+                    }
+                }
+                return closest;
+            }
+
+            function build3dLegoMosaic() {
+                if (!loadedImage) return;
+
+                const gridSize = parseInt(studSizeInput.value, 10);
+                const maxExtrusion = parseFloat(height3dInput.value);
+                const shapeMode = document.querySelector('input[name="brickShape"]:checked').value;
+                const usePalette = useOfficialPalette.checked;
+
+                const bVal = parseInt(brightnessInput.value, 10);
+                const cVal = parseInt(contrastInput.value, 10);
+                const factor = (259 * (cVal + 255)) / (255 * (259 - cVal));
+
+                // Process image in 2D canvas
+                analysisCanvas.width = gridSize;
+                analysisCanvas.height = gridSize;
+                analysisCtx.drawImage(loadedImage, 0, 0, gridSize, gridSize);
+
+                const imgData = analysisCtx.getImageData(0, 0, gridSize, gridSize).data;
+                const grid = [];
+
+                for (let r = 0; r < gridSize; r++) {
+                    grid[r] = [];
+                    for (let c = 0; c < gridSize; c++) {
+                        const idx = (r * gridSize + c) * 4;
+                        let red = imgData[idx];
+                        let green = imgData[idx + 1];
+                        let blue = imgData[idx + 2];
+
+                        // Brightness / Contrast
+                        red = Math.min(255, Math.max(0, factor * (red + bVal - 128) + 128));
+                        green = Math.min(255, Math.max(0, factor * (green + bVal - 128) + 128));
+                        blue = Math.min(255, Math.max(0, factor * (blue + bVal - 128) + 128));
+
+                        // Brightness metric for 3D extrusion height (> 1 layer)
+                        const luminance = (red * 0.299 + green * 0.587 + blue * 0.114) / 255;
+                        const heightLayers = 1 + (luminance * maxExtrusion);
+                        // Numero INTERO di plate reali da impilare (ogni plate = un pezzo fisico acquistabile)
+                        const plateCount = Math.max(1, Math.round(heightLayers));
+
+                        let hexColor = (Math.round(red) << 16) + (Math.round(green) << 8) + Math.round(blue);
+                        let rgbArray = [red, green, blue];
+                        let isTransCell = false;
+
+                        if (usePalette) {
+                            const matched = getClosestColor(red, green, blue);
+                            hexColor = matched.hex;
+                            rgbArray = matched.rgb;
+                            isTransCell = !!matched.transparent;
+                        }
+
+                        grid[r][c] = {
+                            hex: hexColor,
+                            rgb: rgbArray,
+                            luminance: luminance,
+                            height: heightLayers,
+                            plates: plateCount,
+                            transparent: isTransCell
+                        };
+                    }
+                }
+
+                // Clear previous 3D mesh
+                while (legoGroup.children.length > 0) {
+                    const obj = legoGroup.children[0];
+                    if (obj.geometry) obj.geometry.dispose();
+                    legoGroup.remove(obj);
+                }
+
+                const studPitch = 1.2;
+                const basePlateWidth = gridSize * studPitch;
+                
+                // Draw Baseplate
+                const baseGeo = new THREE.BoxGeometry(basePlateWidth + 0.8, basePlateWidth + 0.8, 0.8);
+                const baseMat = new THREE.MeshStandardMaterial({ color: currentBaseplateHex, roughness: 0.5 });
+                const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+                baseMesh.position.set(0, 0, -0.4);
+                baseMesh.receiveShadow = true;
+                legoGroup.add(baseMesh);
+
+                // Brick Counters
+                let cRound = 0, c11 = 0, c12 = 0, c22 = 0;
+                const used = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
+                const placedPieces = [];
+                let maxPlates = 1;
+
+                for (let r = 0; r < gridSize; r++) {
+                    for (let c = 0; c < gridSize; c++) {
+                        if (used[r][c]) continue;
+
+                        const cell = grid[r][c];
+                        maxPlates = Math.max(maxPlates, cell.plates);
+
+                        // SHAPE MODE: 'realMixed' -> Mix of Round tiles and Square/Rectangular bricks
+                        if (shapeMode === 'realMixed') {
+                            // High luminance/detail points or checker pattern -> Round tile 1x1
+                            if ((r + c) % 5 === 0 || cell.luminance > 0.8) {
+                                used[r][c] = true;
+                                create3DBrick(c, r, 1, 1, 'round', cell, studPitch, gridSize);
+                                placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'round', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                                cRound++;
+                                continue;
+                            }
+                        }
+
+                        if (shapeMode === 'round') {
+                            used[r][c] = true;
+                            create3DBrick(c, r, 1, 1, 'round', cell, studPitch, gridSize);
+                            placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'round', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                            cRound++;
+                            continue;
+                        }
+
+                        // Try 2x2 Square Block
+                        if (c + 1 < gridSize && r + 1 < gridSize &&
+                            !used[r][c+1] && !used[r+1][c] && !used[r+1][c+1] &&
+                            sameColor(cell, grid[r][c+1]) && sameColor(cell, grid[r+1][c]) && sameColor(cell, grid[r+1][c+1])) {
+                            
+                            used[r][c] = used[r][c+1] = used[r+1][c] = used[r+1][c+1] = true;
+                            create3DBrick(c, r, 2, 2, 'square', cell, studPitch, gridSize);
+                            placedPieces.push({ row: r, col: c, studsX: 2, studsY: 2, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                            c22++;
+                            continue;
+                        }
+
+                        // Try 1x2 Horizontal Block
+                        if (c + 1 < gridSize && !used[r][c+1] && sameColor(cell, grid[r][c+1])) {
+                            used[r][c] = used[r][c+1] = true;
+                            create3DBrick(c, r, 2, 1, 'square', cell, studPitch, gridSize);
+                            placedPieces.push({ row: r, col: c, studsX: 2, studsY: 1, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                            c12++;
+                            continue;
+                        }
+
+                        // Default 1x1 Square
+                        used[r][c] = true;
+                        create3DBrick(c, r, 1, 1, 'square', cell, studPitch, gridSize);
+                        placedPieces.push({ row: r, col: c, studsX: 1, studsY: 1, shapeType: 'square', hex: cell.hex, plates: cell.plates, transparent: !!cell.transparent });
+                        c11++;
+                    }
+                }
+
+                // Update UI Counters
+                const totalBricks = cRound + c11 + c12 + c22;
+                const totalStuds = gridSize * gridSize;
+                const totalPhysicalPieces = placedPieces.reduce((sum, p) => sum + p.plates, 0);
+                statTotalBricks.textContent = totalBricks.toLocaleString();
+                statTotalStuds.textContent = totalStuds.toLocaleString();
+                countRound.textContent = cRound;
+                count1x1.textContent = c11;
+                count1x2.textContent = c12;
+                count2x2.textContent = c22;
+
+                // Dimensioni reali (scala LEGO® ufficiale: 8mm/stud, 3.2mm/plate)
+                const realWidthCm = (gridSize * STUD_PITCH_MM / 10).toFixed(1);
+                const realDepthCm = (maxPlates * PLATE_HEIGHT_MM / 10).toFixed(1);
+                realFootprint.textContent = `${realWidthCm} x ${realWidthCm} cm`;
+                realDepth.textContent = `${realDepthCm} cm`;
+                realTotalPieces.textContent = totalPhysicalPieces.toLocaleString();
+                instructionsBtn.disabled = false;
+
+                lastBuild = {
+                    gridSize, usePalette, placedPieces, maxPlates,
+                    totalPhysicalPieces, totalBricks, totalStuds,
+                    realWidthCm, realDepthCm
+                };
+
+                // Adjust camera zoom to fit grid size
+                const camDist = gridSize * 1.5;
+                camera.position.set(0, -camDist * 0.8, camDist * 0.9);
+                controls.target.set(0, 0, maxExtrusion * 0.5);
+            }
+
+            function sameColor(c1, c2) {
+                return c1.hex === c2.hex && c1.plates === c2.plates && !!c1.transparent === !!c2.transparent;
+            }
+
+            // Create individual 3D Extruded LEGO Brick in Three.js
+            function create3DBrick(col, row, studsX, studsY, shapeType, cell, pitch, gridSize) {
+                // Spessore proporzionale al numero reale di plate impilate (rapporto reale 3.2mm/8mm = 0.4 x pitch)
+                const brickDepth = cell.plates * pitch * (PLATE_HEIGHT_MM / STUD_PITCH_MM);
+                const posX = (col + studsX / 2 - gridSize / 2) * pitch;
+                const posY = -(row + studsY / 2 - gridSize / 2) * pitch;
+                const posZ = brickDepth / 2;
+
+                const material = new THREE.MeshStandardMaterial({
+                    color: cell.hex,
+                    roughness: cell.transparent ? 0.05 : 0.25,
+                    metalness: 0.05,
+                    transparent: !!cell.transparent,
+                    opacity: cell.transparent ? 0.55 : 1
+                });
+
+                let bodyMesh;
+
+                if (shapeType === 'round') {
+                    // Tondo 1x1 Cylinder
+                    const radius = (pitch * 0.92) / 2;
+                    const geo = new THREE.CylinderGeometry(radius, radius, brickDepth, 24);
+                    geo.rotateX(Math.PI / 2);
+                    bodyMesh = new THREE.Mesh(geo, material);
+                } else {
+                    // Quadrato / Rettangolo Box
+                    const width = studsX * pitch - 0.08;
+                    const length = studsY * pitch - 0.08;
+                    const geo = new THREE.BoxGeometry(width, length, brickDepth);
+                    bodyMesh = new THREE.Mesh(geo, material);
+                }
+
+                bodyMesh.position.set(posX, posY, posZ);
+                bodyMesh.castShadow = true;
+                bodyMesh.receiveShadow = true;
+                legoGroup.add(bodyMesh);
+
+                // Add 3D Studs (Borchie) on top of the brick
+                const studRadius = 0.32;
+                const studHeight = 0.35;
+                const studGeo = new THREE.CylinderGeometry(studRadius, studRadius, studHeight, 16);
+                studGeo.rotateX(Math.PI / 2);
+
+                for (let sx = 0; sx < studsX; sx++) {
+                    for (let sy = 0; sy < studsY; sy++) {
+                        const studMesh = new THREE.Mesh(studGeo, material);
+                        const sX = posX + (sx - (studsX - 1) / 2) * pitch;
+                        const sY = posY - (sy - (studsY - 1) / 2) * pitch;
+                        const sZ = brickDepth + studHeight / 2;
+
+                        studMesh.position.set(sX, sY, sZ);
+                        studMesh.castShadow = true;
+                        studMesh.receiveShadow = true;
+                        legoGroup.add(studMesh);
+                    }
+                }
+            }
+
+            export3dBtn.addEventListener('click', () => {
+                renderer.render(scene, camera);
+                const dataURL = renderer.domElement.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = `lego-mosaic-3d-${Date.now()}.png`;
+                link.href = dataURL;
+                link.click();
+            });
+
+            // ---------- ISTRUZIONI DI COSTRUZIONE & DISTINTA PEZZI ----------
+
+            function drawTopDownMap(canvas, build, cellPx) {
+                const size = build.gridSize;
+                canvas.width = size * cellPx;
+                canvas.height = size * cellPx;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                build.placedPieces.forEach(p => {
+                    const x = p.col * cellPx;
+                    const y = p.row * cellPx;
+                    const w = p.studsX * cellPx;
+                    const h = p.studsY * cellPx;
+                    const hexStr = '#' + p.hex.toString(16).padStart(6, '0');
+
+                    ctx.fillStyle = hexStr;
+                    if (p.shapeType === 'round') {
+                        ctx.beginPath();
+                        ctx.arc(x + w / 2, y + h / 2, (w / 2) * 0.9, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillRect(x + 0.5, y + 0.5, w - 1, h - 1);
+                    }
+
+                    // Numero di plate impilate, solo se > 1 (indica l'altezza da costruire in quel punto)
+                    if (p.plates > 1 && cellPx >= 10) {
+                        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                        ctx.font = `bold ${Math.max(8, cellPx * 0.4)}px Inter, sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(p.plates, x + w / 2, y + h / 2);
+                    }
+                });
+            }
+
+            function buildPartsSummary(build) {
+                const groups = new Map();
+                build.placedPieces.forEach(p => {
+                    const label = shapeLabel(p.shapeType, p.studsX, p.studsY);
+                    const key = `${label}|${p.hex}|${p.plates}|${p.transparent ? 1 : 0}`;
+                    if (!groups.has(key)) {
+                        groups.set(key, { label, hex: p.hex, plates: p.plates, transparent: !!p.transparent, quantity: 0 });
+                    }
+                    groups.get(key).quantity++;
+                });
+                return Array.from(groups.values()).sort((a, b) => (b.quantity * b.plates) - (a.quantity * a.plates));
+            }
+
+            function generateInstructions() {
+                if (!lastBuild) return;
+                const build = lastBuild;
+                const cellPx = build.gridSize > 60 ? 10 : (build.gridSize > 40 ? 14 : 18);
+
+                drawTopDownMap(mapExportCanvas, build, cellPx);
+                const mapDataUrl = mapExportCanvas.toDataURL('image/png');
+
+                const parts = buildPartsSummary(build);
+                const rows = parts.map(p => {
+                    const hexStr = '#' + p.hex.toString(16).padStart(6, '0').toUpperCase();
+                    const match = LEGO_PALETTE_SOLID.concat(LEGO_PALETTE_TRANS).find(c => c.hex === p.hex);
+                    const name = build.usePalette ? ((match?.name || hexStr) + (p.transparent ? ' (Trasp.)' : '')) : hexStr;
+                    const totalPieces = p.quantity * p.plates;
+                    return `<tr>
+                        <td><span class="color-swatch" style="background:${hexStr}${p.transparent ? ';opacity:.55' : ''}"></span></td>
+                        <td>${name}</td>
+                        <td>${p.label}</td>
+                        <td class="text-center">${p.plates}</td>
+                        <td class="text-center font-mono">${p.quantity}</td>
+                        <td class="text-center font-mono font-bold">${totalPieces}</td>
+                    </tr>`;
+                }).join('');
+
+                instructionsContent.innerHTML = `
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                        <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                            <div class="text-slate-400 mb-1">Formato pannello</div>
+                            <div class="font-bold text-slate-100 text-sm">${build.realWidthCm} x ${build.realWidthCm} cm</div>
+                        </div>
+                        <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                            <div class="text-slate-400 mb-1">Spessore massimo</div>
+                            <div class="font-bold text-slate-100 text-sm">${build.realDepthCm} cm</div>
+                        </div>
+                        <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                            <div class="text-slate-400 mb-1">Griglia</div>
+                            <div class="font-bold text-slate-100 text-sm">${build.gridSize} x ${build.gridSize} studs</div>
+                        </div>
+                        <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                            <div class="text-slate-400 mb-1">Pezzi fisici totali</div>
+                            <div class="font-bold text-yellow-400 text-sm">${build.totalPhysicalPieces.toLocaleString()}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="font-heading font-bold text-sm text-slate-100 mb-2">Mappa dall'alto (posizione + colore)</h3>
+                        <p class="text-[11px] text-slate-400 mb-2">Ogni cella è un pezzo base 1x1/1x2/2x2. Il numero al centro indica quante plate impilare in quel punto (nessun numero = 1 sola plate).</p>
+                        <div class="bg-slate-950 rounded-xl border border-slate-700 p-2 flex justify-center overflow-auto">
+                            <img src="${mapDataUrl}" alt="Mappa mosaico" class="max-w-full h-auto rounded" style="image-rendering: pixelated;">
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="font-heading font-bold text-sm text-slate-100 mb-2">Distinta pezzi completa</h3>
+                        <div class="overflow-x-auto rounded-xl border border-slate-700">
+                            <table class="parts-table w-full text-xs">
+                                <thead class="bg-slate-800 text-slate-300 text-left">
+                                    <tr>
+                                        <th></th>
+                                        <th>Colore</th>
+                                        <th>Pezzo</th>
+                                        <th class="text-center">Altezza (plate)</th>
+                                        <th class="text-center">Posizioni</th>
+                                        <th class="text-center">Pezzi fisici</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                instructionsModal.classList.remove('hidden');
+            }
+
+            instructionsBtn.addEventListener('click', generateInstructions);
+            closeInstructionsBtn.addEventListener('click', () => instructionsModal.classList.add('hidden'));
+            instructionsOverlay.addEventListener('click', () => instructionsModal.classList.add('hidden'));
+            printInstructionsBtn.addEventListener('click', () => window.print());
+
+            downloadMapBtn.addEventListener('click', () => {
+                if (!lastBuild) return;
+                const link = document.createElement('a');
+                link.download = `lego-mosaico-mappa-${Date.now()}.png`;
+                link.href = mapExportCanvas.toDataURL('image/png');
+                link.click();
+            });
+
+        });
+    </script>
+</body>
+</html>

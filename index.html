@@ -936,6 +936,8 @@
             let selectedCadTool = 'select';
             let viewportLastHit = null;
             let libraryDragSession = null;
+            let pointerActionSuppressed = false;
+            let pendingGridMoveHit = null;
             let cadClipboard = null;
             let viewportContextMenuState = null;
             let draggingProjectTabId = null;
@@ -1233,6 +1235,54 @@
                 });
                 renderEditList();
                 build3dLegoMosaic();
+            }
+
+            function movePieceFromViewport(piece, targetRow, targetCol) {
+                const project = getActiveProject();
+                if (!project || !piece) return;
+
+                if (piece.row === targetRow && piece.col === targetCol) {
+                    updateCadStatus('Pezzo già in posizione.', 'Sposta');
+                    return;
+                }
+
+                project.manualEdits.push({
+                    id: `edit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    mode: 'delete',
+                    target: 'piece',
+                    row: piece.row,
+                    col: piece.col,
+                    width: piece.studsX,
+                    height: piece.studsY,
+                    label: 'CAD move delete',
+                    shapeType: piece.shapeType,
+                    studsX: piece.studsX,
+                    studsY: piece.studsY,
+                    hex: piece.hex,
+                    plates: piece.plates,
+                    transparent: !!piece.transparent
+                });
+
+                project.manualEdits.push({
+                    id: `edit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    mode: 'insert',
+                    target: 'piece',
+                    row: targetRow,
+                    col: targetCol,
+                    width: piece.studsX,
+                    height: piece.studsY,
+                    label: 'CAD move insert',
+                    shapeType: piece.shapeType,
+                    studsX: piece.studsX,
+                    studsY: piece.studsY,
+                    hex: piece.hex,
+                    plates: piece.plates,
+                    transparent: !!piece.transparent
+                });
+
+                renderEditList();
+                build3dLegoMosaic();
+                updateCadStatus(`Pezzo spostato in R${targetRow + 1} C${targetCol + 1}.`, 'Sposta');
             }
 
             function createProject(name) {
@@ -2276,6 +2326,7 @@
                     build: hit.build,
                     row,
                     col,
+                    sourcePiece: hit.kind === 'piece' ? hit.piece : null,
                     startX: null,
                     startY: null
                 };
@@ -2312,6 +2363,7 @@
                     build: hit.build,
                     row: hit.kind === 'piece' ? hit.piece.row : hit.row,
                     col: hit.kind === 'piece' ? hit.piece.col : hit.col,
+                    sourcePiece: null,
                     startX: null,
                     startY: null
                 };
@@ -2329,6 +2381,7 @@
                 }
                 libraryDragSession = null;
                 placementSession = null;
+                pendingGridMoveHit = null;
                 hoveredPieceKey = null;
                 clearPlacementGhost();
                 updatePieceHighlights();
@@ -2380,6 +2433,15 @@
                 hoveredPieceKey = hit?.kind === 'piece' ? hit.pieceKey : null;
                 updatePieceHighlights();
 
+                if (selectedCadTool === 'select' && pendingGridMoveHit && !placementSession && viewportPointerDown) {
+                    const dx = Math.abs(event.clientX - viewportPointerDown.x);
+                    const dy = Math.abs(event.clientY - viewportPointerDown.y);
+                    if (dx + dy > 5) {
+                        startPlacementSession(pendingGridMoveHit);
+                        updateCadStatus('Spostamento pezzo: trascina sul nuovo punto e rilascia.', 'Sposta');
+                    }
+                }
+
                 if (!placementSession) return;
                 if (hit) {
                     placementSession.row = hit.kind === 'piece' ? hit.piece.row : hit.row;
@@ -2395,6 +2457,18 @@
 
                 event.preventDefault();
                 viewportPointerDown = { x: event.clientX, y: event.clientY };
+                pointerActionSuppressed = event.detail >= 2;
+                pendingGridMoveHit = selectedCadTool === 'select' && hit.kind === 'piece' ? hit : null;
+
+                if (pointerActionSuppressed) {
+                    if (hit.kind === 'piece') {
+                        selectedPieceKey = hit.pieceKey;
+                        setSelectedPiece(hit.piece);
+                        updatePieceHighlights();
+                    }
+                    return;
+                }
+
                 controls.enabled = selectedCadTool !== 'insert';
                 applyViewportAction(hit);
             }
@@ -2417,22 +2491,40 @@
                 if (event.button !== 0) return;
                 controls.enabled = true;
 
-                if (!placementSession) {
+                if (pointerActionSuppressed) {
+                    pointerActionSuppressed = false;
+                    pendingGridMoveHit = null;
                     viewportPointerDown = null;
                     return;
                 }
 
-                if (selectedCadTool !== 'insert') {
+                if (!placementSession) {
+                    pendingGridMoveHit = null;
+                    viewportPointerDown = null;
+                    return;
+                }
+
+                if (selectedCadTool !== 'insert' && !placementSession.sourcePiece) {
                     placementSession = null;
                     clearPlacementGhost();
+                    pendingGridMoveHit = null;
                     viewportPointerDown = null;
                     return;
                 }
 
                 const hit = getViewportHit(event) || placementSession;
-                commitViewportPlacement(hit.kind === 'piece' ? hit.piece.row : hit.row, hit.kind === 'piece' ? hit.piece.col : hit.col);
+                const targetRow = hit.kind === 'piece' ? hit.piece.row : hit.row;
+                const targetCol = hit.kind === 'piece' ? hit.piece.col : hit.col;
+
+                if (placementSession.sourcePiece) {
+                    movePieceFromViewport(placementSession.sourcePiece, targetRow, targetCol);
+                } else {
+                    commitViewportPlacement(targetRow, targetCol);
+                }
+
                 selectedPieceKey = hit.kind === 'piece' ? hit.pieceKey : null;
                 placementSession = null;
+                pendingGridMoveHit = null;
                 clearPlacementGhost();
                 updatePieceHighlights();
                 viewportPointerDown = null;
